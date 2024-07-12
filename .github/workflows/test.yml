@@ -1,0 +1,48 @@
+name: Unit Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+
+jobs:
+  Tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: 
+          - ubuntu-latest
+        python-version: 
+          - "3.9"
+          - "3.10"
+          - "3.11"
+
+    runs-on: ${{ matrix.os }}
+
+    defaults:
+      run:
+        shell: bash -el {0}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      
+      - name: Install SaProt on ${{ matrix.os }} - py${{ matrix.python-version }}
+        run: |
+          pip3 install -U 'pip<24.0'
+          pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+          pip3 install . 
+
+      - name: Test on Ubuntu
+
+        run: |
+          bash tests/run_tests.sh
+      

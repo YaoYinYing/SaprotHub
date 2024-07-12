@@ -1,12 +1,16 @@
+from typing import Literal
 import torch
 import torch.distributed as dist
 import torchmetrics
 
 from torch.nn.functional import cross_entropy
 
+from saprot.utils.foldseek_util import Mask
+
 from ..model_interface import register_model
 from .base import SaprotBaseModel
 
+IF_METHOD_HINT=Literal["argmax", "multinomial"]
 
 @register_model
 class SaProtIFModel(SaprotBaseModel):
@@ -74,7 +78,7 @@ class SaProtIFModel(SaprotBaseModel):
         valid_acc = log_dict["valid_acc"]
         self.check_save_condition(valid_acc, mode="max")
     
-    def predict(self, aa_seq: str, struc_seq: str, method: str = "argmax", num_samples: int = 1) -> str:
+    def predict(self, aa_seq: str, struc_seq: str, method: IF_METHOD_HINT = "argmax", num_samples: int = 1) -> list[str]:
         """
         Predict all masked amino acids in the sequence.
         Args:
@@ -89,17 +93,24 @@ class SaProtIFModel(SaprotBaseModel):
             num_samples: Number of predicted sequences. Only works when method is "multinomial".
 
         Returns:
-            Predicted residue sequence.
+            Predicted residue sequences.
         """
-        assert len(aa_seq) == len(struc_seq), "The length of the amino acid sequence and the foldseek sequence must be the same."
-        assert method in ["argmax", "multinomial"], "The prediction method must be either 'argmax' or 'multinomial'."
-        if method == "argmax":
-            assert num_samples == 1, "The sample number must be 1 when the prediction method is 'argmax'."
+        if not len(aa_seq) == len(struc_seq):
+            raise ValueError(f"The length of the amino acid sequence({len(aa_seq)=}) and the foldseek sequence ({len(struc_seq)=})must be the same. ")
+        if not method in ["argmax", "multinomial"]:
+            raise ValueError("The prediction method must be either 'argmax' or 'multinomial'.")
+        if method == "argmax" and  num_samples == 1:
+            raise ValueError("The sample number must be 1 when the prediction method is 'argmax'.")
             
-        sa_seq = "".join(f"{aa}{struc}" for aa, struc in zip(aa_seq, struc_seq))
+        sa_seq = "".join(f"{aa}{struc}" for aa, struc in zip(aa_seq, struc_seq.lower()))
+        print(f'{sa_seq=}')
 
         # Record the index of masked amino acids
-        mask_indices = [i for i, aa in enumerate(aa_seq) if aa == '#']
+        mask=Mask(None)
+        mask.update_from_masked_sequence(aa_seq)
+
+        mask_indices = mask.mask
+
 
         with torch.no_grad():
             inputs = self.tokenizer(sa_seq, return_tensors='pt')
@@ -117,8 +128,12 @@ class SaProtIFModel(SaprotBaseModel):
                 
             pred_aa_seqs = []
             for preds in batch_preds:
-                masked_preds = preds[mask_indices]
-                pred_tokens = self.tokenizer.convert_ids_to_tokens(masked_preds)
+                print(f'{preds=}')
+                print(f'{preds.shape=}')
+                print(f'{mask_indices=}')
+                # masked_preds = preds[mask_indices]
+                pred_tokens = self.tokenizer.convert_ids_to_tokens(preds)
+                print(f'{pred_tokens=}')
     
                 tokens = list(aa_seq)
                 for i, pred_token in zip(mask_indices, pred_tokens):
