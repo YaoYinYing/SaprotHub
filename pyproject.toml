@@ -28,6 +28,12 @@ matplotlib = "*"
 multiprocess = "*"
 loguru = "*"
 colorama = "*"
+
+pooch = "*"
+huggingface_hub = "*"
+accelerate = "*"
+platformdirs = "*"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
