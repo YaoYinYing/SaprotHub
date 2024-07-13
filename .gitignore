@@ -14,3 +14,4 @@ output.tsv
 bin/foldseek
 output.tsv.dbtype
 output/inverse_folding/predicted_seq.fasta
+/output
