@@ -5,7 +5,7 @@ import subprocess
 import tarfile
 import time
 import json
-from typing import Literal, Sequence, Union
+from typing import Any, Literal, Sequence, Union
 import numpy as np
 import re
 import sys
@@ -136,6 +136,12 @@ class StrucuralSequences:
         )
     
     def __getitem__(self,chain_id: str):
+        return self.seqs[chain_id]
+    
+
+    def get(self,chain_id: str, default_value: Union[Any, None]=None):
+        if chain_id not in self.seqs:
+            return default_value
         return self.seqs[chain_id]
 
 
