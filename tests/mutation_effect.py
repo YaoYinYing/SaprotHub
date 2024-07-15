@@ -1,4 +1,6 @@
 import os
+
+import torch
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )
@@ -26,7 +28,7 @@ def main():
     model = SaprotFoldseekMutationModel(**config)
     tokenizer = model.tokenizer
 
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     model.to(device)
 

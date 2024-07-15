@@ -1,4 +1,6 @@
 import os
+
+import torch
 from saprot.utils.weights import PretrainedModel
 
 def main():
@@ -7,7 +9,7 @@ def main():
     ).load_model()
 
 
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
 
     seq = "MdEvVpQpLrVyQdYaKv"

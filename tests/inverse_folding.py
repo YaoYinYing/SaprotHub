@@ -1,6 +1,8 @@
 import os
 from typing import Tuple
 
+import torch
+
 from saprot.utils.foldseek_util import (
     FoldSeekSetup,
     Mask,
@@ -64,7 +66,7 @@ def inverse_folding(
 
     saprot_if_model = SaProtIFModel(**config)
     tokenizer = saprot_if_model.tokenizer
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     saprot_if_model.to(device)
 
     ################################################################################

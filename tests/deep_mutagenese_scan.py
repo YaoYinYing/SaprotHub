@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+import torch
 
 from saprot.utils.foldseek_util import StrucuralSequences, get_struc_seq
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
@@ -27,7 +28,7 @@ def get_model():
     }
     model = SaprotFoldseekMutationModel(**config)
 
-    device = "cpu"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     model.eval()
     model.to(device)
 
