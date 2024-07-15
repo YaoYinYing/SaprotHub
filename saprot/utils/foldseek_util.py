@@ -5,128 +5,194 @@ import subprocess
 import tarfile
 import time
 import json
-from typing import Any, Literal, Sequence, Union
+from typing import Any, Literal, Optional, Sequence, Union
 import numpy as np
 import re
-import sys
 import pooch
 import platformdirs
 
 from saprot.utils.mask_tool import shorter_range
 
 FOLDSEEK_STRUC_VOCAB = "pynwrqhgdlvtmfsaeikc#"
-FOLDSEEK_STRUC_VOCAB_HINT = Literal['p', 'y', 'n', 'w', 'r', 'q', 'h', 'g', 'd', 'l', 'v', 't', 'm', 'f', 's', 'a', 'e', 'i', 'k', 'c', '#']
-
 @dataclass
 class Mask:
-    mask_pos_range: str # set to None or '' to mask with full length.
+    """
+    A class to represent a mask, used to mark specific positions in a sequence.
 
-    mask_label: str= '#'
+    Attributes:
+        mask_pos_range: The range of positions marked by the mask, in string format.
+        mask_label: The label used to mark positions, default is '#'.
+        mask_separator: The separator used in the mask position range, default is ','.
+        mask_connector: The connector used in the mask position range, default is '-'.
+        zero_indexed: Indicates whether the position is 0-based, default is False.
+    """
+    mask_pos_range: str
+    mask_label: str = '#'
     mask_separator: str = ","
     mask_connector: str = "-"
+    zero_indexed: bool = False
 
-    zero_indexed:bool=False
+    def update_from_masked_sequence(self, masked_sequence: str):
+        """
+        Updates the mask position range based on a masked sequence.
 
-
-    def update_from_masked_sequence(self, masked_sequence):
-        mask: tuple[int]=tuple(i for i, k in enumerate(masked_sequence) if k == self.mask_label)
+        Parameters:
+            masked_sequence: A string containing the masked sequence.
+        """
+        mask: tuple[int] = tuple(i for i, k in enumerate(masked_sequence) if k == self.mask_label)
         self.mask_pos_range = shorter_range(mask, connector=self.mask_connector, seperator=self.mask_separator)
         print(f'Generate mask from masked sequence: {self.mask_pos_range}')
-
-        self.zero_indexed=True
-
-
-
+        self.zero_indexed = True
 
     def __post_init__(self):
-        if len(self.mask_label) !=1:
+        """
+        Validates the mask_label after object initialization to ensure it is a single character.
+        """
+        if len(self.mask_label) != 1:
             raise ValueError("mask_label must be a single character")
 
-
-
     @property
-    def mask(self)->list[int]:
-        if  self.mask_pos_range == '':
+    def mask(self) -> list[int]:
+        """
+        Gets the list of positions marked by the mask.
+
+        Returns:
+            A list of masked positions.
+        Raises:
+            ValueError: If mask_pos_range is empty.
+        """
+        if self.mask_pos_range == '':
             raise ValueError('Mask pos range cannot be empty!')
-        
         from saprot.utils.mask_tool import expand_range
-
-        expanded_mask_pos=expand_range(shortened_str=self.mask_pos_range, connector=self.mask_connector, seperator=self.mask_separator)
+        expanded_mask_pos = expand_range(shortened_str=self.mask_pos_range, connector=self.mask_connector, seperator=self.mask_separator)
         if not self.zero_indexed:
-            expanded_mask_pos=[i-1 for i in expanded_mask_pos]
-
+            expanded_mask_pos = [i - 1 for i in expanded_mask_pos]
         return expanded_mask_pos
-    
 
-    def masked(self, sequence:Union[str, list,tuple])-> str:
+    def masked(self, sequence: Union[str, list, tuple]) -> str:
         """
-        Returns a masked sequence.
+        Returns a masked sequence based on the current mask settings.
+
+        Parameters:
+            sequence: The original sequence, can be a string, list, or tuple.
+
+        Returns:
+            The masked sequence.
+        Raises:
+            ValueError: If the length of the sequence is less than the maximum position of the mask, or if the mask position range is empty.
         """
-        sequence=list(sequence)
-        if len(sequence)<max(self.mask)+1:
+        sequence = list(sequence)
+        if len(sequence) < max(self.mask) + 1:
             raise ValueError(f"Sequence length {len(sequence)} is less than the mask position range {self.mask_pos_range}")
-
         if self.mask_pos_range is None or self.mask_pos_range == '':
             self.mask_pos_range = f'1-{len(sequence)}'
-
             print(f'Mask is set to full length: {self.mask_pos_range}')
-
         for pos in self.mask:
-            sequence[pos]=self.mask_label
-        
+            sequence[pos] = self.mask_label
         return ''.join(sequence)
 
 
-
-        
-
 @dataclass
-class StrucuralSequence:
-    seq:str
-    struc_seq: Sequence[FOLDSEEK_STRUC_VOCAB_HINT]
+class StructuralAwareSequence:
+    """
+    A class to represent a protein sequence that is aware of its structural context.
+    
+    Attributes:
+    amino_acid_seq (str): The amino acid sequence of the protein.
+    structural_seq (str): The structural sequence corresponding to the protein sequence.
+    desc (str): A description of the sequence.
+    name (str): The name of the sequence.
+    name_chain (Optional[str]): The name of the chain within the sequence. Defaults to None.
+    chain (Optional[str]): The identifier of the chain. Defaults to None.
+    """
+    
+    amino_acid_seq: str
+    structural_seq: str
     desc: str
-
     name: str
-    name_chain: str=None
-    chain: str=None
-
+    name_chain: Optional[str] = None
+    chain: Optional[str] = None
 
     def __post_init__(self):
-        self.seq=self.seq.strip()
-        self.struc_seq=self.struc_seq.strip().lower()
-        self.name_chain=self.desc.split(" ")[0]
-        self.chain=self.name_chain.replace(self.name, "").split("_")[-1]
-        if len(self.seq) != len(self.struc_seq):
-            raise ValueError("Sequence and structure sequence must be of the same length")
-        
+        """
+        Post-initialization method to clean up sequences and extract chain information from the description.
+        Validates that the amino acid sequence and structural sequence have the same length.
+        Removes file extensions from the name if present.
+        """
+        self.amino_acid_seq = self.amino_acid_seq.strip()
+        self.structural_seq = self.structural_seq.strip().lower()
+        self.name_chain = self.desc.split(" ")[0]
+        self.chain = self.name_chain.replace(self.name, "").split("_")[-1]
+
+        if len(self.amino_acid_seq) != len(self.structural_seq):
+            raise ValueError("The amino acid sequence and structural sequence must be of the same length")
+
         if self.name.endswith('.cif') or self.name.endswith('.pdb'):
             self.name = self.name[:-4]
 
     @property
     def combined_sequence(self) -> str:
-        combined_sequence=''.join(f'{_seq}{_struc_seq}' for _seq, _struc_seq in zip(self.seq, self.struc_seq.lower()))
+        """
+        Generates a combined sequence string where each amino acid is followed by its corresponding structural letter.
+
+        Returns:
+        str: The combined sequence of amino acids and structures.
+        """
+        combined_sequence = ''.join(f'{_seq}{_struc_seq}' for _seq, _struc_seq in zip(self.amino_acid_seq, self.structural_seq.lower()))
         return combined_sequence
-    
 
-    def masked_seq(self, mask: Mask):
-        return mask.masked(self.seq)
-    
+    def masked_seq(self, mask: 'Mask') -> str:
+        """
+        Masks the amino acid sequence based on the provided mask object.
 
-    def masked_struct_seq(self, mask: Mask):
-        return mask.masked(self.struc_seq)
+        Parameters:
+        mask (Mask): An instance of the Mask class that determines which parts of the sequence should be masked.
 
+        Returns:
+        str: The masked amino acid sequence.
+        """
+        return mask.masked(self.amino_acid_seq)
+
+    def masked_struct_seq(self, mask: 'Mask') -> str:
+        """
+        Masks the structural sequence based on the provided mask object.
+
+        Parameters:
+        mask (Mask): An instance of the Mask class that determines which parts of the sequence should be masked.
+
+        Returns:
+        str: The masked structural sequence.
+        """
+        return mask.masked(self.structural_seq)
 
 
         
 
 @dataclass
-class StrucuralSequences:
+class StructuralAwareSequences:
+    """
+    A class for managing sequences that are aware of their structure.
+    
+    This class stores a source structure identifier and a mapping of chains to sequences,
+    allowing for filtering and chain-based sequence access.
+
+    Attributes:
+    source_structure (str): Identifier for the source structure, could be a filename or a unique identifier for the structure.
+    seqs (dict[str, StructuralAwareSequence]): A dictionary mapping chain identifiers to StructuralAwareSequence objects representing sequences of specific chains.
+
+    """
     source_structure: str=None
-    seqs:dict[str, StrucuralSequence]=field(default_factory=dict)
+    seqs:dict[str, StructuralAwareSequence]=field(default_factory=dict)
     
 
-    def filtered(self, chains: tuple[str]) -> 'StrucuralSequences':
-        return StrucuralSequences(
+    def filtered(self, chains: tuple[str]) -> 'StructuralAwareSequences':
+        """
+        Returns a filtered view of StructuralAwareSequences containing only the specified chains.
+        
+        Parameters:
+        chains: A tuple of strings containing the identifiers of the chains to retain.
+        """
+        return StructuralAwareSequences(
             source_structure=self.source_structure,
             seqs={
                 chain: seq
@@ -136,10 +202,28 @@ class StrucuralSequences:
         )
     
     def __getitem__(self,chain_id: str):
+        """
+        Enables accessing sequences by chain identifier using indexing syntax.
+        
+        Parameter:
+        chain_id: The identifier of the chain to access.
+        
+        Returns:
+        The StructuralAwareSequence associated with the given chain identifier.
+        """
         return self.seqs[chain_id]
     
-
     def get(self,chain_id: str, default_value: Union[Any, None]=None):
+        """
+        Retrieves a sequence by chain identifier with a fallback default value.
+        
+        Parameters:
+        chain_id: The identifier of the chain to retrieve.
+        default_value: The value to return if the chain is not found (default is None).
+        
+        Returns:
+        The StructuralAwareSequence for the given chain identifier or the default value if not found.
+        """
         if chain_id not in self.seqs:
             return default_value
         return self.seqs[chain_id]
@@ -267,7 +351,7 @@ def get_struc_seq(foldseek,
                   chains: list = None,
                   process_id: int = 0,
                   plddt_mask: bool = False,
-                  plddt_threshold: float = 70.) -> StrucuralSequences:
+                  plddt_threshold: float = 70.) -> StructuralAwareSequences:
     """
     
     Args:
@@ -290,12 +374,12 @@ def get_struc_seq(foldseek,
     os.system(cmd)
     
     name = os.path.basename(path)
-    seq_dict: StrucuralSequences =StrucuralSequences(source_structure=path, seqs={})
+    seq_dict =StructuralAwareSequences(source_structure=path, seqs={})
     with open(tmp_save_path, "r") as r:
         for i, line in enumerate(r):
             desc, seq, struc_seq = line.split("\t")[:3]
 
-            new_seq=StrucuralSequence(seq=seq, struc_seq=struc_seq,desc=desc,name=name)
+            new_seq=StructuralAwareSequence(amino_acid_seq=seq, structural_seq=struc_seq,desc=desc,name=name)
             
             # Mask low plddt
             if plddt_mask:
@@ -304,9 +388,9 @@ def get_struc_seq(foldseek,
                 
                 # Mask regions with plddt < threshold
                 indices = np.where(plddts < plddt_threshold)[0]
-                np_seq = np.array(list(new_seq.struc_seq))
+                np_seq = np.array(list(new_seq.structural_seq))
                 np_seq[indices] = "#"
-                new_seq.struc_seq = "".join(np_seq)
+                new_seq.structural_seq = "".join(np_seq)
             
             seq_dict.seqs.update({new_seq.chain: new_seq})
 

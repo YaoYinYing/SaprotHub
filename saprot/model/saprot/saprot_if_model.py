@@ -128,12 +128,8 @@ class SaProtIFModel(SaprotBaseModel):
                 
             pred_aa_seqs = []
             for preds in batch_preds:
-                print(f'{preds=}')
-                print(f'{preds.shape=}')
-                print(f'{mask_indices=}')
                 masked_preds = preds[mask_indices]
                 pred_tokens = self.tokenizer.convert_ids_to_tokens(masked_preds)
-                print(f'{pred_tokens=}')
     
                 tokens = list(aa_seq)
                 for i, pred_token in zip(mask_indices, pred_tokens):

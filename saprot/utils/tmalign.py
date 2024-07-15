@@ -5,7 +5,7 @@ import platform
 import subprocess
 from typing import Optional, Tuple
 
-class TMalignCompiler:
+class TMalignSetup:
     """
     A class to handle the fetching, modifying, and compiling of the TMalign binary.
 
@@ -127,7 +127,7 @@ class TMalignCompiler:
 
 
 
-class TMalignWrapper:
+class TMalign:
     """
     A wrapper class for calling the TMalign program from Python.
 
@@ -185,7 +185,7 @@ class TMalignWrapper:
             cmd += ['-m', output_matrix]
         
         if based_on_sequence:
-            cmd = [self.binary_path, '-seq', pdb1, pdb2]
+            cmd += ['-seq']
 
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         
