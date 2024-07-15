@@ -9,3 +9,5 @@ python tests/structure_awared.py
 python tests/inverse_folding.py
 # python tests/inverse_folding_refold.py
 python tests/deep_mutagenese_scan.py
+
+python tests/call_tmalign.py
