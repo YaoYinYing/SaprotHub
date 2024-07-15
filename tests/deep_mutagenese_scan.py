@@ -9,6 +9,8 @@ from saprot.model.saprot.saprot_foldseek_mutation_model import (
 from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.weights import PretrainedModel
 
+from check_device import best_device
+
 
 def get_model():
     model_loader = PretrainedModel(
@@ -28,7 +30,7 @@ def get_model():
     }
     model = SaprotFoldseekMutationModel(**config)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = best_device()
     model.eval()
     model.to(device)
 

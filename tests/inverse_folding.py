@@ -12,6 +12,7 @@ from saprot.utils.foldseek_util import (
 from saprot.utils.weights import PretrainedModel, SaProtModelHint
 from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
 
+from check_device import best_device
 
 def inverse_folding(
     input_structure: str, chain_id: str, mask_area: str, save_dir: str = "."
@@ -66,7 +67,7 @@ def inverse_folding(
 
     saprot_if_model = SaProtIFModel(**config)
     tokenizer = saprot_if_model.tokenizer
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = best_device()
     saprot_if_model.to(device)
 
     ################################################################################
