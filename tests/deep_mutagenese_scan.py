@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import torch
 
-from saprot.utils.foldseek_util import StrucuralSequences, get_struc_seq
+from saprot.utils.foldseek_util import StructuralAwareSequences, get_struc_seq
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )
@@ -36,7 +36,7 @@ def get_model():
 
 
 def run_dms(
-    model: SaprotFoldseekMutationModel, parsed_seqs: StrucuralSequences, chain_id: str
+    model: SaprotFoldseekMutationModel, parsed_seqs: StructuralAwareSequences, chain_id: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Run DMS on the mutant sequence.
@@ -52,7 +52,7 @@ def run_dms(
 
     print(f"Running DMS against chain {chain_id}")
 
-    for resi, resn in enumerate(wt_seq.seq):
+    for resi, resn in enumerate(wt_seq.amino_acid_seq):
         print(f"Running DMS on {resi+1}, {resn=}")
 
         mut_dict = model.predict_pos_mut(seq=wt_seq.combined_sequence, pos=resi+1)

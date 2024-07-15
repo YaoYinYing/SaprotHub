@@ -7,7 +7,7 @@ from saprot.utils.foldseek_util import (
     FoldSeekSetup,
     Mask,
     get_struc_seq,
-    StrucuralSequence,
+    StructuralAwareSequence,
 )
 from saprot.utils.weights import PretrainedModel, SaProtModelHint
 from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
@@ -15,7 +15,7 @@ from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
 
 def inverse_folding(
     input_structure: str, chain_id: str, mask_area: str, save_dir: str = "."
-) -> Tuple[StrucuralSequence, list[str], Mask]:
+) -> Tuple[StructuralAwareSequence, list[str], Mask]:
     model_loader = PretrainedModel(
         dir=os.path.abspath("./weights/SaProt/"),
         model_name="SaProt_650M_AF2_inverse_folding",
@@ -51,7 +51,7 @@ def inverse_folding(
     save_name = "predicted_seq"  # @param {type:"string"}
 
     masked_aa_seq = parsed_seqs.masked_seq(mask)
-    masked_struc_seq = parsed_seqs.struc_seq
+    masked_struc_seq = parsed_seqs.structural_seq
 
     print(f"{mask=}")
     print(f"{masked_aa_seq=}, {masked_struc_seq=}")
@@ -82,7 +82,7 @@ def inverse_folding(
     save_path = os.path.join(save_dir, f"{save_name}.fasta")
 
     with open(save_path, "w") as w:
-        w.write(f">{parsed_seqs.name}_{parsed_seqs.chain}\n{parsed_seqs.seq}\n")
+        w.write(f">{parsed_seqs.name}_{parsed_seqs.chain}\n{parsed_seqs.amino_acid_seq}\n")
         for i, aa_seq in enumerate(pred_aa_seqs):
             print(aa_seq)
             w.write(f">>{parsed_seqs.name}_{parsed_seqs.chain}_pred_{i}\n{aa_seq}\n")

@@ -4,7 +4,7 @@ import torch
 
 from saprot.utils.foldseek_util import (
     Mask,
-    StrucuralSequence,
+    StructuralAwareSequence,
 )
 from saprot.utils.weights import PretrainedModel
 
@@ -17,7 +17,7 @@ from inverse_folding import inverse_folding
 
 
 def refold(
-    structure_seq: StrucuralSequence, seqs: list[str], mask: Mask, save_dir: str = "."
+    structure_seq: StructuralAwareSequence, seqs: list[str], mask: Mask, save_dir: str = "."
 ):
     model_loader = PretrainedModel(
         dir=os.path.abspath("./weights/SaProt/"),

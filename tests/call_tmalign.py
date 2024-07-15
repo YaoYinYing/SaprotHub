@@ -1,4 +1,4 @@
-from saprot.utils.tmalign import TMalignCompiler,TMalignWrapper
+from saprot.utils.tmalign import TMalignSetup,TMalign
 
 import os
 import pooch
@@ -6,7 +6,7 @@ import pooch
 def compile_tmalign():
     bin_path='./bin/TMalign'
 
-    compile_worker=TMalignCompiler(bin_path)
+    compile_worker=TMalignSetup(bin_path)
     return compile_worker.ensure_binary()
 
 
@@ -22,7 +22,7 @@ def test_tmalign(tmalign_path: str):
 
     candidate_pdbs = [f for f in os.listdir(candidate_pdb_dir) if f.endswith('.pdb')]
 
-    tmalign_worker=TMalignWrapper(tmalign_path)
+    tmalign_worker=TMalign(tmalign_path)
     for pdb in candidate_pdbs:
         r= tmalign_worker.align(pdb1=template_pdb_path,pdb2=os.path.join(candidate_pdb_dir,pdb))
         print(r)

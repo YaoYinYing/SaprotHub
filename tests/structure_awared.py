@@ -13,8 +13,8 @@ def main():
     parsed_seqs = get_struc_seq(foldseek, pdb_path, ["A"], plddt_mask=False)["A"]
 
     print(f'{parsed_seqs=}')
-    print(f"seq: {parsed_seqs.seq}")
-    print(f"foldseek_seq: {parsed_seqs.struc_seq}")
+    print(f"seq: {parsed_seqs.amino_acid_seq}")
+    print(f"foldseek_seq: {parsed_seqs.structural_seq}")
     print(f"combined_seq: {parsed_seqs.combined_sequence}")
 
     mask=Mask(mask_pos_range='1-10,20-30,40-50')
