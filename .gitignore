@@ -16,3 +16,6 @@ output.tsv.dbtype
 output/inverse_folding/predicted_seq.fasta
 /output
 .DS_Store
+example/tmalign/1UBQ.pdb
+bin/TMalign
+TMalign.cpp

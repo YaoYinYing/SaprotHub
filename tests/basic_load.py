@@ -3,13 +3,16 @@ import os
 import torch
 from saprot.utils.weights import PretrainedModel
 
+
+from check_device import best_device
+
 def main():
     model, tokenizer = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt"), model_name="SaProt_35M_AF2"
+        dir=os.path.abspath("./weights/SaProt/"), model_name="SaProt_35M_AF2"
     ).load_model()
 
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = best_device()
     model.to(device)
 
     seq = "MdEvVpQpLrVyQdYaKv"

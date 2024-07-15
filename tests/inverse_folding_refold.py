@@ -14,6 +14,7 @@ from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
 
 
 from inverse_folding import inverse_folding
+from check_device import best_device
 
 
 def refold(
@@ -30,7 +31,7 @@ def refold(
     esmfold.esm = esmfold.esm.half()
     esmfold.trunk.set_chunk_size(64)
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = best_device()
     esmfold.to(device)
 
     fold_id = structure_seq.name
