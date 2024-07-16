@@ -108,10 +108,13 @@ class StructuralAwareSequence:
     
     amino_acid_seq: str
     structural_seq: str
-    desc: str
-    name: str
+    desc: Optional[str] = None
+    name: Optional[str] = None
     name_chain: Optional[str] = None
     chain: Optional[str] = None
+
+    def __bool__(self) -> bool:
+        return any(x is None for x in [self.amino_acid_seq, self.structural_seq])
 
     def __post_init__(self):
         """
@@ -119,6 +122,8 @@ class StructuralAwareSequence:
         Validates that the amino acid sequence and structural sequence have the same length.
         Removes file extensions from the name if present.
         """
+        if not self:
+            return
         self.amino_acid_seq = self.amino_acid_seq.strip()
         self.structural_seq = self.structural_seq.strip().lower()
         self.name_chain = self.desc.split(" ")[0]
@@ -129,6 +134,25 @@ class StructuralAwareSequence:
 
         if self.name.endswith('.cif') or self.name.endswith('.pdb'):
             self.name = self.name[:-4]
+
+    def from_SA_sequence(self, SA_sequence: str):
+        seq_len=len(SA_sequence)
+        if not seq_len >0 and seq_len % 2 == 0:
+            raise ValueError("The SA sequence must be a multiple of 2")
+        
+        aa_seq_islice=slice(0, seq_len, 2)
+        st_seq_islice=slice(1, seq_len, 2)
+
+        self.amino_acid_seq=SA_sequence[aa_seq_islice]
+        self.structural_seq=SA_sequence[st_seq_islice]
+
+
+        return self
+    
+        
+
+
+        
 
     @property
     def combined_sequence(self) -> str:

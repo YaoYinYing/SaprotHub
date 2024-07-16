@@ -4,10 +4,58 @@ import pytorch_lightning as pl
 import datetime
 import wandb
 
+
+from easydict import EasyDict
+
 from pytorch_lightning.loggers import WandbLogger, TensorBoardLogger
 from model.model_interface import ModelInterface
 from dataset.data_interface import DataInterface
 from pytorch_lightning.strategies import DDPStrategy, DeepSpeedStrategy, Strategy
+
+from saprot.utils.tasks import TASK2MODEL, TASK2DATASET, TASK_TYPE, ALL_TASKS,ALL_TASKS_HINT
+
+class ModelDispatcher:
+    def __init__(self, task:ALL_TASKS_HINT, config: EasyDict):
+      self.task: ALL_TASKS_HINT = task
+      if not task in ALL_TASKS:
+          raise ValueError(f"Task {task} not supported")
+      
+      self.model_config = copy.deepcopy(config)
+
+
+      if "kwargs" in self.model_config.keys():
+          kwargs = self.model_config.pop('kwargs')
+      else:
+          kwargs = {}
+      
+      self.model_config.update(kwargs)
+
+
+    def dispatch(self):
+      if self.task == "classification":
+        from model.saprot.saprot_classification_model import SaprotClassificationModel
+        return SaprotClassificationModel(**self.model_config)
+      
+      if self.task == "token_classification":
+        from model.saprot.saprot_token_classification_model import SaprotTokenClassificationModel
+        return SaprotTokenClassificationModel(**self.model_config)
+      
+      if self.task ==  "regression":
+        if 'num_labels' in self.model_config: 
+            del self.model_config['num_labels']
+        from model.saprot.saprot_regression_model import SaprotRegressionModel
+        return SaprotRegressionModel(**self.model_config)
+
+      if self.task == "pair_classification":
+        from model.saprot.saprot_pair_classification_model import SaprotPairClassificationModel
+        return SaprotPairClassificationModel(**self.model_config)
+      
+      if self.task == "pair_regression":
+        from model.saprot.saprot_pair_regression_model import SaprotPairRegressionModel
+        return SaprotPairRegressionModel(**self.model_config)
+      
+    def __call__(self):
+      return self.dispatch()
 
 ################################################################################
 ################################ load model ####################################
@@ -45,6 +93,44 @@ def my_load_model(config):
       return SaprotPairRegressionModel(**model_config)
 
 
+class DatasetDispatcher:
+    def __init__(self, task: ALL_TASKS_HINT, config: EasyDict):
+        self.task: ALL_TASKS_HINT = task
+        self.dataset_config = copy.deepcopy(config)
+        
+        if self.task not in ALL_TASKS:
+            raise ValueError(f"Task {self.task} is not supported.")
+        
+        # Handle additional keyword arguments if present
+        if 'kwargs' in self.dataset_config:
+            kwargs = self.dataset_config.pop('kwargs')
+            self.dataset_config.update(kwargs)
+
+    def dispatch(self):
+        if self.task == "classification":
+            from dataset.saprot.saprot_classification_dataset import SaprotClassificationDataset
+            return SaprotClassificationDataset(**self.dataset_config)
+
+        elif self.task == "token_classification":
+            if 'plddt_threshold' in self.dataset_config:
+                del self.dataset_config['plddt_threshold']
+            from dataset.saprot.saprot_token_classification_dataset import SaprotTokenClassificationDataset
+            return SaprotTokenClassificationDataset(**self.dataset_config)
+
+        elif self.task == "regression":
+            from dataset.saprot.saprot_regression_dataset import SaprotRegressionDataset
+            return SaprotRegressionDataset(**self.dataset_config)
+
+        elif self.task == "pair_classification":
+            from dataset.saprot.saprot_pair_classification_dataset import SaprotPairClassificationDataset
+            return SaprotPairClassificationDataset(**self.dataset_config)
+
+        elif self.task == "pair_regression":
+            from dataset.saprot.saprot_pair_regression_dataset import SaprotPairRegressionDataset
+            return SaprotPairRegressionDataset(**self.dataset_config)
+
+    def __call__(self):
+        return self.dispatch()
 
 ################################################################################
 ################################ load dataset ##################################

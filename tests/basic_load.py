@@ -4,15 +4,14 @@ import torch
 from saprot.utils.weights import PretrainedModel
 
 
-from check_device import best_device
 
 def main():
     model, tokenizer = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt/"), model_name="SaProt_35M_AF2"
+        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"), model_name="SaProt_35M_AF2"
     ).load_model()
 
 
-    device = best_device()
+    device = model.device
     model.to(device)
 
     seq = "MdEvVpQpLrVyQdYaKv"

@@ -58,6 +58,8 @@ class SaprotBaseModel(AbstractModel):
         self.freeze_backbone = freeze_backbone
         self.gradient_checkpointing = gradient_checkpointing
         self.lora_kwargs = lora_kwargs
+
+        
         super().__init__(**kwargs)
         
         # After all initialization done, lora technique is applied if needed
@@ -93,8 +95,8 @@ class SaprotBaseModel(AbstractModel):
                 lora_config_path = config_list[i].lora_config_path
                 if i == 0:
                     # If i == 0, initialize a PEFT model
-                    self.model = PeftModelForSequenceClassification.from_pretrained(self.model,
-                                                                                    lora_config_path,
+                    self.model = PeftModelForSequenceClassification.from_pretrained(model=self.model,
+                                                                                    model_id=lora_config_path,
                                                                                     adapter_name=adapter_name,
                                                                                     is_trainable=is_trainable)
                 else:

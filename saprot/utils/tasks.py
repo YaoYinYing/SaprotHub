@@ -2,7 +2,7 @@ from immutabledict import immutabledict
 
 
 # data_type_list
-ALL_TASKS: tuple[str] = tuple(
+ALL_TASKS: tuple[str] = (
     "Single AA Sequence",
     "Single SA Sequence",
     "Single UniProt ID",
@@ -22,18 +22,18 @@ ALL_TASKS: tuple[str] = tuple(
     "Multiple pairs of PDB/CIF Structures",
 )
 
-# task_type_dict
-TASK_TYPE: immutabledict[str,str]  = immutabledict(
+# task_type_dict, reversed
+TASK_TYPE: immutabledict[str, str] = immutabledict(
     {
-        "Classify protein sequences (classification)": "classification",
-        "Classify each Amino Acid (amino acid classification), e.g. Binding site detection": "token_classification",
-        "Predict protein fitness (regression), e.g. Predict the Thermostability of a protein": "regression",
-        "Predict protein-protein interaction (pair classification)": "pair_classification",
-        "Predict protein-protein interaction (pair regression)": "pair_regression",
+        "classification": "Classify protein sequences (classification)",
+        "token_classification": "Classify each Amino Acid (amino acid classification), e.g. Binding site detection",
+        "regression": "Predict protein fitness (regression), e.g. Predict the Thermostability of a protein",
+        "pair_classification": "Predict protein-protein interaction (pair classification)",
+        "pair_regression": "Predict protein-protein interaction (pair regression)",
     }
 )
 # model_type_dict
-TASK2MODEL: immutabledict[str,str] = immutabledict(
+TASK2MODEL: immutabledict[str, str] = immutabledict(
     {
         "classification": "saprot/saprot_classification_model",
         "token_classification": "saprot/saprot_token_classification_model",
@@ -45,7 +45,7 @@ TASK2MODEL: immutabledict[str,str] = immutabledict(
 
 
 # dataset_type_dict
-TASK2DATASET: immutabledict[str,str]  = immutabledict(
+TASK2DATASET: immutabledict[str, str] = immutabledict(
     {
         "classification": "saprot/saprot_classification_dataset",
         "token_classification": "saprot/saprot_token_classification_dataset",
@@ -56,7 +56,7 @@ TASK2DATASET: immutabledict[str,str]  = immutabledict(
 )
 
 # training_data_type_dict
-TRAINING_SEQUENCE_TYPE_MAPPING: immutabledict[str,str]  = immutabledict(
+TRAINING_SEQUENCE_TYPE_MAPPING: immutabledict[str, str] = immutabledict(
     {
         "Single AA Sequence": "AA",
         "Single SA Sequence": "SA",

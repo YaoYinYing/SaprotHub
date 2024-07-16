@@ -9,12 +9,11 @@ from saprot.model.saprot.saprot_foldseek_mutation_model import (
 from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.weights import PretrainedModel
 
-from check_device import best_device
 
 
 def get_model():
     model_loader = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt/"),
+        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"),
         model_name="SaProt_650M_AF2",
     )
 
@@ -30,9 +29,9 @@ def get_model():
     }
     model = SaprotFoldseekMutationModel(**config)
 
-    device = best_device()
+    device = model.device
     model.eval()
-    model.to(device)
+
 
     return model
 

@@ -2,16 +2,27 @@ import copy
 import json
 import os
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Union
 from dataclasses import dataclass, field
 import warnings
 
 import platformdirs
 from easydict import EasyDict
 from huggingface_hub import snapshot_download
+import torch
 
-from saprot.utils.tasks import TASK2MODEL
+from saprot.utils.tasks import ALL_TASKS, ALL_TASKS_HINT, TASK2MODEL
 
+import torch
+import torch.backends
+import torch.backends.mps
+
+def best_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+        return torch.device("mps")
+    return torch.device("cpu")
 
 SaProtModelHint = Literal[
     "SaProt_35M_AF2",
@@ -39,12 +50,15 @@ class PretrainedModel:
         model_name (SaProtModelHint): Name of the model to load.
         loader_type (MODEL_LOADER_TYPE_HINT, optional): Type of loader to use. Defaults to None.
         huggingface_id (str): Identifier for the model on HuggingFace. Set to None to use a local model. Defaults to 'westlake-repl'.
+        device (str): Device to use. Defaults auto for picking the best device.
     """
 
     dir: str
     model_name: SaProtModelHint
     loader_type: MODEL_LOADER_TYPE_HINT = None
     huggingface_id: str = "westlake-repl"
+
+    device: str = 'auto'
 
     @property
     def weights_dir(self):
@@ -56,6 +70,14 @@ class PretrainedModel:
         Initializes the model by fetching and loading it from either a remote repository or a local directory.
         Validates the HuggingFace ID and directory paths, and downloads the model if necessary.
         """
+
+        
+        if self.device == 'auto':
+            self.device=best_device()
+            print(f"Using device: {self.device}")
+        else:
+            self.device=torch.device(self.device)
+        
         if self.loader_type is None:
             self.loader_type = "native"
 
@@ -63,6 +85,10 @@ class PretrainedModel:
             raise ValueError(
                 f"Invalid loader type: {self.loader_type}. Valid options are: {MODEL_LOADER_TYPE}"
             )
+
+
+        if '/' in self.model_name:
+            self.huggingface_id, self.model_name= self.model_name.split('/')
 
         if self.huggingface_id == "":
             print(
@@ -141,6 +167,7 @@ class PretrainedModel:
 
             tokenizer = EsmTokenizer.from_pretrained(self.weights_dir)
             model = EsmForMaskedLM.from_pretrained(self.weights_dir)
+            model.to(self.device)
             return model, tokenizer
         if self.loader_type == "esm":
             from saprot.utils.esm_loader import load_esm_saprot
@@ -148,6 +175,7 @@ class PretrainedModel:
             model, alphabet = load_esm_saprot(
                 os.path.join(self.weights_dir, f"{self.model_name}.pt")
             )
+            model.to(self.device)
             return model, alphabet
         if self.loader_type == "esmfold":
             from transformers import AutoTokenizer, EsmForProteinFolding
@@ -158,34 +186,52 @@ class PretrainedModel:
                 )
             esmfoldtokenizer = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
             esmfold = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1")
+            esmfold.to(self.device)
             return esmfold, esmfoldtokenizer
 
         raise TypeError(
             f"Loader must be one of {MODEL_LOADER_TYPE} but received `{self.loader_type}`"
         )
 
-
+@dataclass
 class AdaptedModel(PretrainedModel):
 
-    task_type: str
+    task_type: ALL_TASKS_HINT=None
 
     _lora_kwargs: dict = field(default_factory=dict)
     _config: EasyDict = None
-    num_of_categories: int = None
+    num_of_categories: int = 10
 
     def __post_init__(self):
+        if self.task_type is None:
+            raise ValueError("Task type must be specified")
+
+        if self.task_type not in ALL_TASKS:
+            raise ValueError(f"Task type {self.task_type} is not supported")
 
         from saprot.config.config_dict import ConfigPreset
 
+        self._fetch_model()
+        self.setup_base_model()
+
         self._lora_kwargs = {
             "num_lora": 1,
-            "config_list": [{"lora_config_path": self.adapter_path}],
+            "config_list": [{"lora_config_path": self.base_model_path}],
         }
 
         self.config = copy.deepcopy(ConfigPreset().Default_config)
 
     def update_config(self):
-        base_model_dir = self.setup_base_model()
+
+        with open(self.adapter_path, "r") as f:
+            adapter_config_dict = json.load(f)
+
+        adapter_config_dict["base_model_name_or_path"]=self.base_model_path
+        print(f'Base model is updated to {self.base_model_path}')
+        
+        with open(self.adapter_path, "w") as f:
+            json.dump(adapter_config_dict, f)
+
 
         # task
         if self.task_type in ["classification", "token_classification"]:
@@ -200,7 +246,7 @@ class AdaptedModel(PretrainedModel):
         # base model
         self.config.model.model_py_path = TASK2MODEL[self.task_type]
         # config.model.save_path = model_save_path
-        self.config.model.kwargs.config_path = base_model_dir
+        self.config.model.kwargs.config_path = self.weights_dir
 
         # lora
         # config.model.kwargs.lora_config_path = adapter_path
@@ -231,9 +277,11 @@ class AdaptedModel(PretrainedModel):
 
     @property
     def model(self):
-        from saprot.utils.module_loader import my_load_model
-
-        return my_load_model(self.config.model)
+        from saprot.utils.module_loader import ModelDispatcher
+        print(self.config)
+        model=ModelDispatcher(task=self.task_type, config=self.config).dispatch()
+        model.to(self.device)
+        return model
 
     @property
     def tokenizer(self):
@@ -244,6 +292,8 @@ class AdaptedModel(PretrainedModel):
     def setup_base_model(self) -> str:
         p = PretrainedModel(dir=self.dir, model_name=self.base_model)
         p._fetch_model()
+
+        self.base_model_path=p.weights_dir
         return p.weights_dir
 
     @property
@@ -253,12 +303,13 @@ class AdaptedModel(PretrainedModel):
 
         base_model = adapter_config_dict["base_model_name_or_path"]
         if "SaProt_650M_AF2" in base_model:
-            return "SaProt_650M_AF2"
+            return "westlake-repl/SaProt_650M_AF2"
         if "SaProt_35M_AF2" in base_model:
-            return "SaProt_35M_AF2"
+            return "westlake-repl/SaProt_35M_AF2"
         raise RuntimeError(
             'Please ensure the base model is "SaProt_650M_AF2" or "SaProt_35M_AF2"'
         )
+
 
     def initialize(self):
         return self.update_config()

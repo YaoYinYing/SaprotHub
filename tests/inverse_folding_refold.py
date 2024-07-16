@@ -14,14 +14,13 @@ from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
 
 
 from inverse_folding import inverse_folding
-from check_device import best_device
 
 
 def refold(
     structure_seq: StructuralAwareSequence, seqs: list[str], mask: Mask, save_dir: str = "."
 ):
     model_loader = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt/"),
+        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"),
         model_name="esmfold_v1",
         huggingface_id="facebook",
         loader_type="esmfold",
@@ -31,8 +30,8 @@ def refold(
     esmfold.esm = esmfold.esm.half()
     esmfold.trunk.set_chunk_size(64)
 
-    device = best_device()
-    esmfold.to(device)
+    device = esmfold.device
+
 
     fold_id = structure_seq.name
     chain_id = structure_seq.chain

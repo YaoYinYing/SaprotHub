@@ -12,13 +12,12 @@ from saprot.utils.foldseek_util import (
 from saprot.utils.weights import PretrainedModel, SaProtModelHint
 from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
 
-from check_device import best_device
 
 def inverse_folding(
     input_structure: str, chain_id: str, mask_area: str, save_dir: str = "."
 ) -> Tuple[StructuralAwareSequence, list[str], Mask]:
     model_loader = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt/"),
+        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"),
         model_name="SaProt_650M_AF2_inverse_folding",
     )
 
@@ -67,8 +66,8 @@ def inverse_folding(
 
     saprot_if_model = SaProtIFModel(**config)
     tokenizer = saprot_if_model.tokenizer
-    device = best_device()
-    saprot_if_model.to(device)
+    device = saprot_if_model.device
+    
 
     ################################################################################
     ############################### Predict ########################################
