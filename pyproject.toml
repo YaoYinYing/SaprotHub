@@ -34,6 +34,8 @@ huggingface_hub = "*"
 accelerate = "*"
 platformdirs = "*"
 
+immutabledict = "*"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"

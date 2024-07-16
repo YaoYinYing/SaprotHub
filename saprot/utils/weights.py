@@ -1,9 +1,16 @@
+import copy
+import json
 import os
+from pathlib import Path
 from typing import Literal
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import warnings
 
 import platformdirs
+from easydict import EasyDict
 from huggingface_hub import snapshot_download
+
+from saprot.utils.tasks import TASK2MODEL
 
 
 SaProtModelHint = Literal[
@@ -72,7 +79,6 @@ class PretrainedModel:
         if self.dir is None:
             self.dir = platformdirs.user_cache_dir("SaProt")
 
-        
         self.dir = os.path.abspath(self.dir)
 
         if self.model_name is None:
@@ -94,7 +100,9 @@ class PretrainedModel:
                 import shutil
 
                 shutil.rmtree(self.weights_dir)
-                raise ConnectionError("Failed to retrieve model weights from HuggingFace")
+                raise ConnectionError(
+                    "Failed to retrieve model weights from HuggingFace"
+                )
 
     def _fetch_model(self, force_redownload=False):
         """
@@ -155,3 +163,102 @@ class PretrainedModel:
         raise TypeError(
             f"Loader must be one of {MODEL_LOADER_TYPE} but received `{self.loader_type}`"
         )
+
+
+class AdaptedModel(PretrainedModel):
+
+    task_type: str
+
+    _lora_kwargs: dict = field(default_factory=dict)
+    _config: EasyDict = None
+    num_of_categories: int = None
+
+    def __post_init__(self):
+
+        from saprot.config.config_dict import ConfigPreset
+
+        self._lora_kwargs = {
+            "num_lora": 1,
+            "config_list": [{"lora_config_path": self.adapter_path}],
+        }
+
+        self.config = copy.deepcopy(ConfigPreset().Default_config)
+
+    def update_config(self):
+        base_model_dir = self.setup_base_model()
+
+        # task
+        if self.task_type in ["classification", "token_classification"]:
+            # config.model.kwargs.num_labels = num_of_categories.value
+            if self.num_of_categories is None or self.num_of_categories <= 2:
+                raise ValueError(
+                    "if task type is one of `classification` or `token_classification`, num_of_categories must be greater than 2"
+                )
+
+            self.config.model.kwargs.num_labels = self.num_of_categories
+
+        # base model
+        self.config.model.model_py_path = TASK2MODEL[self.task_type]
+        # config.model.save_path = model_save_path
+        self.config.model.kwargs.config_path = base_model_dir
+
+        # lora
+        # config.model.kwargs.lora_config_path = adapter_path
+        # config.model.kwargs.use_lora = True
+        # config.model.kwargs.lora_inference = True
+        self.config.model.kwargs.lora_kwargs = self.lora_kwargs
+
+        return self
+
+    @property
+    def lora_kwargs(self):
+        return self._lora_kwargs
+
+    @lora_kwargs.setter
+    def lora_kwargs(self, value: dict):
+        self._lora_kwargs = value
+
+    @property
+    def has_adapter(self) -> bool:
+        return "adapter_config.json" in os.listdir(self.weights_dir)
+
+    @property
+    def adapter_path(self):
+        if not self.has_adapter:
+            warnings.warn("Model does not have adapter, please train first")
+            return
+        return os.path.join(self.weights_dir, "adapter_config.json")
+
+    @property
+    def model(self):
+        from saprot.utils.module_loader import my_load_model
+
+        return my_load_model(self.config.model)
+
+    @property
+    def tokenizer(self):
+        from transformers import EsmTokenizer
+
+        return EsmTokenizer.from_pretrained(self.config.model.kwargs.config_path)
+
+    def setup_base_model(self) -> str:
+        p = PretrainedModel(dir=self.dir, model_name=self.base_model)
+        p._fetch_model()
+        return p.weights_dir
+
+    @property
+    def base_model(self):
+        with open(self.adapter_path, "r") as f:
+            adapter_config_dict = json.load(f)
+
+        base_model = adapter_config_dict["base_model_name_or_path"]
+        if "SaProt_650M_AF2" in base_model:
+            return "SaProt_650M_AF2"
+        if "SaProt_35M_AF2" in base_model:
+            return "SaProt_35M_AF2"
+        raise RuntimeError(
+            'Please ensure the base model is "SaProt_650M_AF2" or "SaProt_35M_AF2"'
+        )
+
+    def initialize(self):
+        return self.update_config()
