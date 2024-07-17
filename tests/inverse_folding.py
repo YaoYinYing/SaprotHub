@@ -6,7 +6,7 @@ import torch
 from saprot.utils.foldseek_util import (
     FoldSeekSetup,
     Mask,
-    get_struc_seq,
+    FoldSeek,
     StructuralAwareSequence,
 )
 from saprot.utils.weights import PretrainedModel, SaProtModelHint
@@ -30,7 +30,7 @@ def inverse_folding(
     pdb_path = input_structure
 
     print(foldseek)
-    parsed_seqs = get_struc_seq(foldseek, pdb_path, [chain_id], plddt_mask=False)[
+    parsed_seqs = FoldSeek(foldseek, plddt_mask=False).query(pdb_path)[
         chain_id
     ]
     print(parsed_seqs)
@@ -88,7 +88,7 @@ def inverse_folding(
             w.write(f">>{parsed_seqs.name}_{parsed_seqs.chain}_pred_{i}\n{aa_seq}\n")
 
     new_mask = Mask(None)
-    new_mask.update_from_masked_sequence(masked_aa_seq)
+    new_mask.from_masked(masked_aa_seq)
     print(new_mask)
 
     return parsed_seqs, pred_aa_seqs, mask

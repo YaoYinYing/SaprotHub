@@ -1,26 +1,8 @@
+from typing import Literal
 from immutabledict import immutabledict
 
 
-# data_type_list
-ALL_TASKS: tuple[str] = (
-    "Single AA Sequence",
-    "Single SA Sequence",
-    "Single UniProt ID",
-    "Single PDB/CIF Structure",
-    "Multiple AA Sequences",
-    "Multiple SA Sequences",
-    "Multiple UniProt IDs",
-    "Multiple PDB/CIF Structures",
-    "SaprotHub Dataset",
-    "A pair of AA Sequences",
-    "A pair of SA Sequences",
-    "A pair of UniProt IDs",
-    "A pair of PDB/CIF Structures",
-    "Multiple pairs of AA Sequences",
-    "Multiple pairs of SA Sequences",
-    "Multiple pairs of UniProt IDs",
-    "Multiple pairs of PDB/CIF Structures",
-)
+
 
 # task_type_dict, reversed
 TASK_TYPE: immutabledict[str, str] = immutabledict(
@@ -77,3 +59,8 @@ TRAINING_SEQUENCE_TYPE_MAPPING: immutabledict[str, str] = immutabledict(
         "Multiple pairs of PDB/CIF Structures": "SA",
     }
 )
+
+
+# data_type_list
+ALL_TASKS: tuple[str] = tuple(TASK2MODEL.keys())
+ALL_TASKS_HINT= Literal['classification','token_classification','regression','pair_classification','pair_regression']

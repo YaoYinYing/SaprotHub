@@ -1,4 +1,4 @@
-from saprot.utils.foldseek_util import get_struc_seq,FoldSeekSetup, Mask, FoldSeek
+from saprot.utils.foldseek_util import FoldSeekSetup, Mask, FoldSeek
 
 def main():
     pdb_path = "example/8ac8.cif"

@@ -16,46 +16,51 @@ from saprot.utils.tasks import TASK2MODEL, TASK2DATASET, TASK_TYPE, ALL_TASKS,AL
 
 class ModelDispatcher:
     def __init__(self, task:ALL_TASKS_HINT, config: EasyDict):
-      self.task: ALL_TASKS_HINT = task
-      if not task in ALL_TASKS:
-          raise ValueError(f"Task {task} not supported")
-      
-      self.model_config = copy.deepcopy(config)
+        self.task: ALL_TASKS_HINT = task
+        if not task in ALL_TASKS:
+            raise ValueError(f"Task {task} not supported")
+        
+        self.model_config = copy.deepcopy(config)
+
+        self.model_config.pop("model_py_path")
 
 
-      if "kwargs" in self.model_config.keys():
-          kwargs = self.model_config.pop('kwargs')
-      else:
-          kwargs = {}
-      
-      self.model_config.update(kwargs)
+        if "kwargs" in self.model_config.keys():
+            kwargs = self.model_config.pop('kwargs')
+        else:
+            kwargs = {}
+
+        print(f'{kwargs=}')
+        
+        
+        self.model_config.update(kwargs)
 
 
     def dispatch(self):
-      if self.task == "classification":
-        from model.saprot.saprot_classification_model import SaprotClassificationModel
-        return SaprotClassificationModel(**self.model_config)
-      
-      if self.task == "token_classification":
-        from model.saprot.saprot_token_classification_model import SaprotTokenClassificationModel
-        return SaprotTokenClassificationModel(**self.model_config)
-      
-      if self.task ==  "regression":
-        if 'num_labels' in self.model_config: 
-            del self.model_config['num_labels']
-        from model.saprot.saprot_regression_model import SaprotRegressionModel
-        return SaprotRegressionModel(**self.model_config)
+        if self.task == "classification":
+            from model.saprot.saprot_classification_model import SaprotClassificationModel
+            return SaprotClassificationModel(**self.model_config)
+        
+        if self.task == "token_classification":
+            from model.saprot.saprot_token_classification_model import SaprotTokenClassificationModel
+            return SaprotTokenClassificationModel(**self.model_config)
+        
+        if self.task ==  "regression":
+            if 'num_labels' in self.model_config: 
+                del self.model_config['num_labels']
+            from model.saprot.saprot_regression_model import SaprotRegressionModel
+            return SaprotRegressionModel(**self.model_config)
 
-      if self.task == "pair_classification":
-        from model.saprot.saprot_pair_classification_model import SaprotPairClassificationModel
-        return SaprotPairClassificationModel(**self.model_config)
-      
-      if self.task == "pair_regression":
-        from model.saprot.saprot_pair_regression_model import SaprotPairRegressionModel
-        return SaprotPairRegressionModel(**self.model_config)
-      
-    def __call__(self):
-      return self.dispatch()
+        if self.task == "pair_classification":
+            from model.saprot.saprot_pair_classification_model import SaprotPairClassificationModel
+            return SaprotPairClassificationModel(**self.model_config)
+        
+        if self.task == "pair_regression":
+            from model.saprot.saprot_pair_regression_model import SaprotPairRegressionModel
+            return SaprotPairRegressionModel(**self.model_config)
+        
+        def __call__(self):
+            return self.dispatch()
 
 ################################################################################
 ################################ load model ####################################
@@ -72,25 +77,26 @@ def my_load_model(config):
     model_config.update(kwargs)
 
     if model_type == "saprot/saprot_classification_model":
-      from model.saprot.saprot_classification_model import SaprotClassificationModel
-      return SaprotClassificationModel(**model_config)
+        from model.saprot.saprot_classification_model import SaprotClassificationModel
+        return SaprotClassificationModel(**model_config)
     
     if model_type == "saprot/saprot_token_classification_model":
-      from model.saprot.saprot_token_classification_model import SaprotTokenClassificationModel
-      return SaprotTokenClassificationModel(**model_config)
+        from model.saprot.saprot_token_classification_model import SaprotTokenClassificationModel
+        return SaprotTokenClassificationModel(**model_config)
     
     if model_type == "saprot/saprot_regression_model":
-      if 'num_labels' in model_config: del model_config['num_labels']
-      from model.saprot.saprot_regression_model import SaprotRegressionModel
-      return SaprotRegressionModel(**model_config)
+        if 'num_labels' in model_config: 
+            del model_config['num_labels']
+        from model.saprot.saprot_regression_model import SaprotRegressionModel
+        return SaprotRegressionModel(**model_config)
 
     if model_type == "saprot/saprot_pair_classification_model":
-      from model.saprot.saprot_pair_classification_model import SaprotPairClassificationModel
-      return SaprotPairClassificationModel(**model_config)
+        from model.saprot.saprot_pair_classification_model import SaprotPairClassificationModel
+        return SaprotPairClassificationModel(**model_config)
     
     if model_type == "saprot/saprot_pair_regression_model":
-      from model.saprot.saprot_pair_regression_model import SaprotPairRegressionModel
-      return SaprotPairRegressionModel(**model_config)
+        from model.saprot.saprot_pair_regression_model import SaprotPairRegressionModel
+        return SaprotPairRegressionModel(**model_config)
 
 
 class DatasetDispatcher:
@@ -142,25 +148,25 @@ def my_load_dataset(config):
     dataset_config.update(kwargs)
 
     if dataset_type == "saprot/saprot_classification_dataset":
-      from dataset.saprot.saprot_classification_dataset import SaprotClassificationDataset
-      return SaprotClassificationDataset(**dataset_config)
+        from dataset.saprot.saprot_classification_dataset import SaprotClassificationDataset
+        return SaprotClassificationDataset(**dataset_config)
     
     if dataset_type == "saprot/saprot_token_classification_dataset":
-      if 'plddt_threshold' in dataset_config: del dataset_config['plddt_threshold']
-      from dataset.saprot.saprot_token_classification_dataset import SaprotTokenClassificationDataset
-      return SaprotTokenClassificationDataset(**dataset_config)
+        if 'plddt_threshold' in dataset_config: del dataset_config['plddt_threshold']
+        from dataset.saprot.saprot_token_classification_dataset import SaprotTokenClassificationDataset
+        return SaprotTokenClassificationDataset(**dataset_config)
     
     if dataset_type == "saprot/saprot_regression_dataset":
-      from dataset.saprot.saprot_regression_dataset import SaprotRegressionDataset
-      return SaprotRegressionDataset(**dataset_config)
+        from dataset.saprot.saprot_regression_dataset import SaprotRegressionDataset
+        return SaprotRegressionDataset(**dataset_config)
     
     if dataset_type == "saprot/saprot_pair_classification_dataset":
-      from dataset.saprot.saprot_pair_classification_dataset import SaprotPairClassificationDataset
-      return SaprotPairClassificationDataset(**dataset_config)
+        from dataset.saprot.saprot_pair_classification_dataset import SaprotPairClassificationDataset
+        return SaprotPairClassificationDataset(**dataset_config)
     
     if dataset_type == "saprot/saprot_pair_regression_dataset":
-      from dataset.saprot.saprot_pair_regression_dataset import SaprotPairRegressionDataset
-      return SaprotPairRegressionDataset(**dataset_config)
+        from dataset.saprot.saprot_pair_regression_dataset import SaprotPairRegressionDataset
+        return SaprotPairRegressionDataset(**dataset_config)
 
 def load_wandb(config):
     # initialize wandb

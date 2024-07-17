@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import torch
 
-from saprot.utils.foldseek_util import StructuralAwareSequences, get_struc_seq
+from saprot.utils.foldseek_util import StructuralAwareSequences, FoldSeek
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )
@@ -87,7 +87,7 @@ def main():
     foldseek = model.foldseek_path
 
     print(foldseek)
-    parsed_seqs = get_struc_seq(foldseek, pdb_path, chains=[chain_id], plddt_mask=False)
+    parsed_seqs = FoldSeek(foldseek, plddt_mask=False).query(pdb_path)
 
     print(f"{parsed_seqs=}")
 

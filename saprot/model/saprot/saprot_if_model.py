@@ -107,7 +107,7 @@ class SaProtIFModel(SaprotBaseModel):
 
         # Record the index of masked amino acids
         mask=Mask(None)
-        mask.update_from_masked_sequence(aa_seq)
+        mask.from_masked(aa_seq)
 
         mask_indices = mask.mask
 

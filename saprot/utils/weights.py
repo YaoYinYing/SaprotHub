@@ -17,12 +17,14 @@ import torch
 import torch.backends
 import torch.backends.mps
 
+
 def best_device() -> torch.device:
     if torch.cuda.is_available():
         return torch.device("cuda")
     if torch.backends.mps.is_available() and torch.backends.mps.is_built():
         return torch.device("mps")
     return torch.device("cpu")
+
 
 SaProtModelHint = Literal[
     "SaProt_35M_AF2",
@@ -58,7 +60,7 @@ class PretrainedModel:
     loader_type: MODEL_LOADER_TYPE_HINT = None
     huggingface_id: str = "westlake-repl"
 
-    device: str = 'auto'
+    device: str = "auto"
 
     @property
     def weights_dir(self):
@@ -71,13 +73,12 @@ class PretrainedModel:
         Validates the HuggingFace ID and directory paths, and downloads the model if necessary.
         """
 
-        
-        if self.device == 'auto':
-            self.device=best_device()
+        if self.device == "auto":
+            self.device = best_device()
             print(f"Using device: {self.device}")
         else:
-            self.device=torch.device(self.device)
-        
+            self.device = torch.device(self.device)
+
         if self.loader_type is None:
             self.loader_type = "native"
 
@@ -86,9 +87,8 @@ class PretrainedModel:
                 f"Invalid loader type: {self.loader_type}. Valid options are: {MODEL_LOADER_TYPE}"
             )
 
-
-        if '/' in self.model_name:
-            self.huggingface_id, self.model_name= self.model_name.split('/')
+        if "/" in self.model_name:
+            self.huggingface_id, self.model_name = self.model_name.split("/")
 
         if self.huggingface_id == "":
             print(
@@ -193,10 +193,11 @@ class PretrainedModel:
             f"Loader must be one of {MODEL_LOADER_TYPE} but received `{self.loader_type}`"
         )
 
+
 @dataclass
 class AdaptedModel(PretrainedModel):
 
-    task_type: ALL_TASKS_HINT=None
+    task_type: ALL_TASKS_HINT = None
 
     _lora_kwargs: dict = field(default_factory=dict)
     _config: EasyDict = None
@@ -207,7 +208,9 @@ class AdaptedModel(PretrainedModel):
             raise ValueError("Task type must be specified")
 
         if self.task_type not in ALL_TASKS:
-            raise ValueError(f"Task type {self.task_type} is not supported")
+            raise ValueError(
+                f"Task type {self.task_type} is not supported. Available tasks: {ALL_TASKS}"
+            )
 
         from saprot.config.config_dict import ConfigPreset
 
@@ -216,7 +219,7 @@ class AdaptedModel(PretrainedModel):
 
         self._lora_kwargs = {
             "num_lora": 1,
-            "config_list": [{"lora_config_path": self.base_model_path}],
+            "config_list": [{"lora_config_path": self.weights_dir}],
         }
 
         self.config = copy.deepcopy(ConfigPreset().Default_config)
@@ -226,12 +229,11 @@ class AdaptedModel(PretrainedModel):
         with open(self.adapter_path, "r") as f:
             adapter_config_dict = json.load(f)
 
-        adapter_config_dict["base_model_name_or_path"]=self.base_model_path
-        print(f'Base model is updated to {self.base_model_path}')
-        
+        adapter_config_dict["base_model_name_or_path"] = self.base_model_path
+        print(f"Base model is updated to {self.base_model_path}")
+
         with open(self.adapter_path, "w") as f:
             json.dump(adapter_config_dict, f)
-
 
         # task
         if self.task_type in ["classification", "token_classification"]:
@@ -246,7 +248,7 @@ class AdaptedModel(PretrainedModel):
         # base model
         self.config.model.model_py_path = TASK2MODEL[self.task_type]
         # config.model.save_path = model_save_path
-        self.config.model.kwargs.config_path = self.weights_dir
+        self.config.model.kwargs.config_path = self.base_model_path
 
         # lora
         # config.model.kwargs.lora_config_path = adapter_path
@@ -275,25 +277,11 @@ class AdaptedModel(PretrainedModel):
             return
         return os.path.join(self.weights_dir, "adapter_config.json")
 
-    @property
-    def model(self):
-        from saprot.utils.module_loader import ModelDispatcher
-        print(self.config)
-        model=ModelDispatcher(task=self.task_type, config=self.config).dispatch()
-        model.to(self.device)
-        return model
-
-    @property
-    def tokenizer(self):
-        from transformers import EsmTokenizer
-
-        return EsmTokenizer.from_pretrained(self.config.model.kwargs.config_path)
-
     def setup_base_model(self) -> str:
         p = PretrainedModel(dir=self.dir, model_name=self.base_model)
         p._fetch_model()
 
-        self.base_model_path=p.weights_dir
+        self.base_model_path = p.weights_dir
         return p.weights_dir
 
     @property
@@ -310,6 +298,18 @@ class AdaptedModel(PretrainedModel):
             'Please ensure the base model is "SaProt_650M_AF2" or "SaProt_35M_AF2"'
         )
 
+    def load_model(self):
+        from saprot.utils.module_loader import ModelDispatcher
+        from transformers import EsmTokenizer
 
-    def initialize(self):
-        return self.update_config()
+        self.update_config()
+
+        print(self.config)
+        model = ModelDispatcher(
+            task=self.task_type, config=self.config.model
+        ).dispatch()
+        model.to(self.device)
+
+        tokenizer = EsmTokenizer.from_pretrained(self.config.model.kwargs.config_path)
+
+        return model, tokenizer

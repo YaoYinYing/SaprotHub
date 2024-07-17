@@ -279,24 +279,24 @@ class InputDataDispatcher:
         # 9. Pair Single AA Sequences
         elif data_type == "A_pair_of_AA_Sequences":
 
-            return StructuralAwareSequencePair(
+            return (StructuralAwareSequencePair(
                 *[
                     StructuralAwareSequence(
                         amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
                     )
                     for aa_seq in raw_data
                 ]
-            )
+            ),)
 
         # 10. Pair Single SA Sequences
         elif data_type == "A_pair_of_SA_Sequences":
 
-            return StructuralAwareSequencePair(
+            return (StructuralAwareSequencePair(
                 *[
                     StructuralAwareSequence(None, None).from_SA_sequence(sa_seq)
                     for sa_seq in raw_data
                 ]
-            )
+            ),)
 
         # 11. Pair Single UniProt IDs
         elif data_type == "A_pair_of_UniProt_IDs":
@@ -304,7 +304,7 @@ class InputDataDispatcher:
             protein_list = self.UniProtID2SA(
                 proteins=[UniProtID(uniprot_id, "AF2", "A") for uniprot_id in raw_data]
             )
-            return StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple)
+            return (StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),)
 
         # 12. Pair Single PDB/CIF Structure
         if data_type == "A_pair_of_PDB/CIF_Structures":
@@ -328,7 +328,7 @@ class InputDataDispatcher:
                     )
                 ]
             )
-            return StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple)
+            return (StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),)
 
         # # Pair raw_data = upload_files/xxx.csv
         # if data_type in data_type_list[12:16]:

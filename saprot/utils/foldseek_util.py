@@ -51,7 +51,7 @@ class Mask:
     mask_connector: str = "-"
     zero_indexed: bool = False
 
-    def update_from_masked_sequence(self, masked_sequence: str):
+    def from_masked(self, masked_sequence: str):
         """
         Updates the mask position range based on a masked sequence.
 
@@ -143,7 +143,7 @@ class StructuralAwareSequence:
     name_chain: Optional[str] = None
     chain: Optional[str] = None
 
-    skip_post_processing: bool = False
+    skip_post_processing: Optional[bool] = False
 
     def __post_init__(self):
         """
@@ -173,7 +173,7 @@ class StructuralAwareSequence:
 
     def from_SA_sequence(self, SA_sequence: str):
         seq_len = len(SA_sequence)
-        if not seq_len > 0 and seq_len % 2 == 0:
+        if not (seq_len > 0 and seq_len % 2 == 0):
             raise ValueError("The SA sequence must be a multiple of 2")
 
         aa_seq_islice = slice(0, seq_len, 2)
