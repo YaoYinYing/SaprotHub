@@ -1,4 +1,4 @@
-from saprot.utils.foldseek_util import get_struc_seq,FoldSeekSetup, Mask
+from saprot.utils.foldseek_util import get_struc_seq,FoldSeekSetup, Mask, FoldSeek
 
 def main():
     pdb_path = "example/8ac8.cif"
@@ -10,7 +10,10 @@ def main():
     foldseek=FoldSeekSetup(bin_dir='./bin',base_url='https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/').foldseek
 
     print(foldseek)
-    parsed_seqs = get_struc_seq(foldseek, pdb_path, ["A"], plddt_mask=False)["A"]
+    parsed_seqs = FoldSeek(foldseek, ["A"], plddt_mask=False).query(pdb_file=pdb_path)
+    #print(parsed_seqs)
+
+    parsed_seqs = parsed_seqs.get("A")
 
     print(f'{parsed_seqs=}')
     print(f"seq: {parsed_seqs.amino_acid_seq}")

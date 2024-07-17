@@ -1,19 +1,37 @@
+import contextlib
 from dataclasses import dataclass, field
 import os
 import platform
+import shutil
 import subprocess
 import tarfile
 import time
 import json
-from typing import Any, Literal, Optional, Sequence, Union
+from typing import Any, List, Literal, Mapping, Optional, Sequence, Tuple, Union
 import numpy as np
 import re
 import pooch
 import platformdirs
+import tempfile
+import subprocess
+from joblib import Parallel, delayed
 
 from saprot.utils.mask_tool import shorter_range
 
+
+@contextlib.contextmanager
+def tmpdir_manager(base_dir: Optional[str] = None):
+    """Context manager that deletes a temporary directory on exit."""
+    tmpdir = tempfile.mkdtemp(dir=base_dir)
+    try:
+        yield tmpdir
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
 FOLDSEEK_STRUC_VOCAB = "pynwrqhgdlvtmfsaeikc#"
+
+
 @dataclass
 class Mask:
     """
@@ -26,8 +44,9 @@ class Mask:
         mask_connector: The connector used in the mask position range, default is '-'.
         zero_indexed: Indicates whether the position is 0-based, default is False.
     """
+
     mask_pos_range: str
-    mask_label: str = '#'
+    mask_label: str = "#"
     mask_separator: str = ","
     mask_connector: str = "-"
     zero_indexed: bool = False
@@ -39,9 +58,13 @@ class Mask:
         Parameters:
             masked_sequence: A string containing the masked sequence.
         """
-        mask: tuple[int] = tuple(i for i, k in enumerate(masked_sequence) if k == self.mask_label)
-        self.mask_pos_range = shorter_range(mask, connector=self.mask_connector, seperator=self.mask_separator)
-        print(f'Generate mask from masked sequence: {self.mask_pos_range}')
+        mask: tuple[int] = tuple(
+            i for i, k in enumerate(masked_sequence) if k == self.mask_label
+        )
+        self.mask_pos_range = shorter_range(
+            mask, connector=self.mask_connector, seperator=self.mask_separator
+        )
+        print(f"Generate mask from masked sequence: {self.mask_pos_range}")
         self.zero_indexed = True
 
     def __post_init__(self):
@@ -61,10 +84,15 @@ class Mask:
         Raises:
             ValueError: If mask_pos_range is empty.
         """
-        if self.mask_pos_range == '':
-            raise ValueError('Mask pos range cannot be empty!')
+        if self.mask_pos_range == "":
+            raise ValueError("Mask pos range cannot be empty!")
         from saprot.utils.mask_tool import expand_range
-        expanded_mask_pos = expand_range(shortened_str=self.mask_pos_range, connector=self.mask_connector, seperator=self.mask_separator)
+
+        expanded_mask_pos = expand_range(
+            shortened_str=self.mask_pos_range,
+            connector=self.mask_connector,
+            seperator=self.mask_separator,
+        )
         if not self.zero_indexed:
             expanded_mask_pos = [i - 1 for i in expanded_mask_pos]
         return expanded_mask_pos
@@ -83,20 +111,22 @@ class Mask:
         """
         sequence = list(sequence)
         if len(sequence) < max(self.mask) + 1:
-            raise ValueError(f"Sequence length {len(sequence)} is less than the mask position range {self.mask_pos_range}")
-        if self.mask_pos_range is None or self.mask_pos_range == '':
-            self.mask_pos_range = f'1-{len(sequence)}'
-            print(f'Mask is set to full length: {self.mask_pos_range}')
+            raise ValueError(
+                f"Sequence length {len(sequence)} is less than the mask position range {self.mask_pos_range}"
+            )
+        if self.mask_pos_range is None or self.mask_pos_range == "":
+            self.mask_pos_range = f"1-{len(sequence)}"
+            print(f"Mask is set to full length: {self.mask_pos_range}")
         for pos in self.mask:
             sequence[pos] = self.mask_label
-        return ''.join(sequence)
+        return "".join(sequence)
 
 
 @dataclass
 class StructuralAwareSequence:
     """
     A class to represent a protein sequence that is aware of its structural context.
-    
+
     Attributes:
     amino_acid_seq (str): The amino acid sequence of the protein.
     structural_seq (str): The structural sequence corresponding to the protein sequence.
@@ -105,7 +135,7 @@ class StructuralAwareSequence:
     name_chain (Optional[str]): The name of the chain within the sequence. Defaults to None.
     chain (Optional[str]): The identifier of the chain. Defaults to None.
     """
-    
+
     amino_acid_seq: str
     structural_seq: str
     desc: Optional[str] = None
@@ -113,16 +143,13 @@ class StructuralAwareSequence:
     name_chain: Optional[str] = None
     chain: Optional[str] = None
 
-    def __bool__(self) -> bool:
-        return any(x is None for x in [self.amino_acid_seq, self.structural_seq])
-
     def __post_init__(self):
         """
         Post-initialization method to clean up sequences and extract chain information from the description.
         Validates that the amino acid sequence and structural sequence have the same length.
         Removes file extensions from the name if present.
         """
-        if not self:
+        if self.amino_acid_seq is None and self.structural_seq is None:
             return
         self.amino_acid_seq = self.amino_acid_seq.strip()
         self.structural_seq = self.structural_seq.strip().lower()
@@ -130,29 +157,25 @@ class StructuralAwareSequence:
         self.chain = self.name_chain.replace(self.name, "").split("_")[-1]
 
         if len(self.amino_acid_seq) != len(self.structural_seq):
-            raise ValueError("The amino acid sequence and structural sequence must be of the same length")
+            raise ValueError(
+                "The amino acid sequence and structural sequence must be of the same length"
+            )
 
-        if self.name.endswith('.cif') or self.name.endswith('.pdb'):
+        if self.name.endswith(".cif") or self.name.endswith(".pdb"):
             self.name = self.name[:-4]
 
     def from_SA_sequence(self, SA_sequence: str):
-        seq_len=len(SA_sequence)
-        if not seq_len >0 and seq_len % 2 == 0:
+        seq_len = len(SA_sequence)
+        if not seq_len > 0 and seq_len % 2 == 0:
             raise ValueError("The SA sequence must be a multiple of 2")
-        
-        aa_seq_islice=slice(0, seq_len, 2)
-        st_seq_islice=slice(1, seq_len, 2)
 
-        self.amino_acid_seq=SA_sequence[aa_seq_islice]
-        self.structural_seq=SA_sequence[st_seq_islice]
+        aa_seq_islice = slice(0, seq_len, 2)
+        st_seq_islice = slice(1, seq_len, 2)
 
+        self.amino_acid_seq = SA_sequence[aa_seq_islice]
+        self.structural_seq = SA_sequence[st_seq_islice]
 
         return self
-    
-        
-
-
-        
 
     @property
     def combined_sequence(self) -> str:
@@ -162,10 +185,15 @@ class StructuralAwareSequence:
         Returns:
         str: The combined sequence of amino acids and structures.
         """
-        combined_sequence = ''.join(f'{_seq}{_struc_seq}' for _seq, _struc_seq in zip(self.amino_acid_seq, self.structural_seq.lower()))
+        combined_sequence = "".join(
+            f"{_seq}{_struc_seq}"
+            for _seq, _struc_seq in zip(
+                self.amino_acid_seq, self.structural_seq.lower()
+            )
+        )
         return combined_sequence
 
-    def masked_seq(self, mask: 'Mask') -> str:
+    def masked_seq(self, mask: "Mask") -> str:
         """
         Masks the amino acid sequence based on the provided mask object.
 
@@ -177,7 +205,7 @@ class StructuralAwareSequence:
         """
         return mask.masked(self.amino_acid_seq)
 
-    def masked_struct_seq(self, mask: 'Mask') -> str:
+    def masked_struct_seq(self, mask: "Mask") -> str:
         """
         Masks the structural sequence based on the provided mask object.
 
@@ -190,13 +218,11 @@ class StructuralAwareSequence:
         return mask.masked(self.structural_seq)
 
 
-        
-
 @dataclass
 class StructuralAwareSequences:
     """
     A class for managing sequences that are aware of their structure.
-    
+
     This class stores a source structure identifier and a mapping of chains to sequences,
     allowing for filtering and chain-based sequence access.
 
@@ -205,46 +231,44 @@ class StructuralAwareSequences:
     seqs (dict[str, StructuralAwareSequence]): A dictionary mapping chain identifiers to StructuralAwareSequence objects representing sequences of specific chains.
 
     """
-    source_structure: str=None
-    seqs:dict[str, StructuralAwareSequence]=field(default_factory=dict)
-    
 
-    def filtered(self, chains: tuple[str]) -> 'StructuralAwareSequences':
+    source_structure: str = None
+    seqs: dict[str, StructuralAwareSequence] = field(default_factory=dict)
+
+    foldseek_results: str = None
+
+    def filtered(self, chains: tuple[str]) -> "StructuralAwareSequences":
         """
         Returns a filtered view of StructuralAwareSequences containing only the specified chains.
-        
+
         Parameters:
         chains: A tuple of strings containing the identifiers of the chains to retain.
         """
         return StructuralAwareSequences(
             source_structure=self.source_structure,
-            seqs={
-                chain: seq
-                for chain, seq in self.seqs.items()
-                if chain in chains
-            }
+            seqs={chain: seq for chain, seq in self.seqs.items() if chain in chains},
         )
-    
-    def __getitem__(self,chain_id: str):
+
+    def __getitem__(self, chain_id: str):
         """
         Enables accessing sequences by chain identifier using indexing syntax.
-        
+
         Parameter:
         chain_id: The identifier of the chain to access.
-        
+
         Returns:
         The StructuralAwareSequence associated with the given chain identifier.
         """
         return self.seqs[chain_id]
-    
-    def get(self,chain_id: str, default_value: Union[Any, None]=None):
+
+    def get(self, chain_id: str, default_value: Union[Any, None] = None):
         """
         Retrieves a sequence by chain identifier with a fallback default value.
-        
+
         Parameters:
         chain_id: The identifier of the chain to retrieve.
         default_value: The value to return if the chain is not found (default is None).
-        
+
         Returns:
         The StructuralAwareSequence for the given chain identifier or the default value if not found.
         """
@@ -253,12 +277,11 @@ class StructuralAwareSequences:
         return self.seqs[chain_id]
 
 
-
 @dataclass
 class FoldSeekSetup:
     """
-    A configuration class for the FoldSeek tool, used to determine the 
-    download and setup of the FoldSeek binary based on the operating system 
+    A configuration class for the FoldSeek tool, used to determine the
+    download and setup of the FoldSeek binary based on the operating system
     and CPU architecture.
 
     Attributes:
@@ -269,13 +292,15 @@ class FoldSeekSetup:
         arch (str): The machine's architecture as reported by the platform.uname() function.
         bin_path (str): Path to the FoldSeek binary, constructed by joining bin_dir and 'foldseek'.
     """
+
     bin_dir: str
-    base_url: str = 'https://mmseqs.com/foldseek/'
-    
+    base_url: str = "https://mmseqs.com/foldseek/"
 
     # Gather system information
     uname = platform.uname()
-    cpu_info = subprocess.run(['cat', '/proc/cpuinfo'], stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode('utf8')
+    cpu_info = subprocess.run(
+        ["cat", "/proc/cpuinfo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ).stdout.decode("utf8")
 
     arch: str = uname.machine
 
@@ -288,13 +313,12 @@ class FoldSeekSetup:
 
         if not os.path.exists(self.bin_dir):
             os.makedirs(self.bin_dir)
-        
 
     @property
-    def  bin_path(self) -> str: 
-        return os.path.join(self.bin_dir, 'foldseek')
+    def bin_path(self) -> str:
+        return os.path.join(self.bin_dir, "foldseek")
 
-    def build_with_flag(self, flag: Literal['avx2', 'sse2']) -> bool:
+    def build_with_flag(self, flag: Literal["avx2", "sse2"]) -> bool:
         """
         Checks if the CPU supports a given instruction set.
 
@@ -317,17 +341,19 @@ class FoldSeekSetup:
         Raises:
             NotImplementedError: If the platform or architecture is unsupported.
         """
-        if self.os_build == 'Darwin':
-            return f'{self.base_url}/foldseek-osx-universal.tar.gz'
-        if self.os_build == 'Linux':
-            if self.arch == 'x86_64':
-                if self.build_with_flag('sse2'):
-                    return f'{self.base_url}/foldseek-linux-sse2.tar.gz'
-                if self.build_with_flag('avx2'):
-                    return f'{self.base_url}/foldseek-linux-avx2.tar.gz'
-            if self.arch == 'aarch64':
-                return f'{self.base_url}/foldseek-linux-arm64.tar.gz'
-        raise NotImplementedError(f'Unsupported platform {self.os_build} or architecture {self.arch}')
+        if self.os_build == "Darwin":
+            return f"{self.base_url}/foldseek-osx-universal.tar.gz"
+        if self.os_build == "Linux":
+            if self.arch == "x86_64":
+                if self.build_with_flag("sse2"):
+                    return f"{self.base_url}/foldseek-linux-sse2.tar.gz"
+                if self.build_with_flag("avx2"):
+                    return f"{self.base_url}/foldseek-linux-avx2.tar.gz"
+            if self.arch == "aarch64":
+                return f"{self.base_url}/foldseek-linux-arm64.tar.gz"
+        raise NotImplementedError(
+            f"Unsupported platform {self.os_build} or architecture {self.arch}"
+        )
 
     @property
     def foldseek(self) -> str:
@@ -354,30 +380,129 @@ class FoldSeekSetup:
         Raises:
             RuntimeError: If the binary cannot be retrieved after extraction.
         """
-        compressed_file_path = pooch.retrieve(self.retrieve_url, known_hash=None, progressbar=True)
-        with tarfile.open(compressed_file_path, 'r:gz') as tar:
-            p=platformdirs.user_cache_dir('FoldSeek')
+        compressed_file_path = pooch.retrieve(
+            self.retrieve_url, known_hash=None, progressbar=True
+        )
+        with tarfile.open(compressed_file_path, "r:gz") as tar:
+            p = platformdirs.user_cache_dir("FoldSeek")
             tar.extractall(path=p)
 
-            os.rename(os.path.join(p,'foldseek','bin', 'foldseek'), self.bin_path)
-        
+            os.rename(os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path)
+
         os.remove(compressed_file_path)
         if not os.path.exists(self.bin_path):
-            raise RuntimeError('Could not retrieve foldseek binary')
-        
+            raise RuntimeError("Could not retrieve foldseek binary")
+
         # chmod +x
         os.chmod(self.bin_path, 0o555)
 
 
+@dataclass
+class FoldSeek:
+    foldseek: str
+    chains: list = None
+    nproc: int = os.cpu_count()
+    plddt_mask: bool = False
+    plddt_threshold: float = 70.0
+    name: str = None
+
+    def __post_init__(self):
+        if not os.path.exists(self.foldseek):
+            raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
+
+    def query(self, pdb_file: str, chain_ids: tuple[str] = None) -> StructuralAwareSequences:
+        self.name = os.path.basename(pdb_file)
+        if self.plddt_mask:
+            plddts = extract_plddt(pdb_file)
+            # Mask regions with plddt < threshold
+            indices = np.where(plddts < self.plddt_threshold)[0]
+
+        with tmpdir_manager() as tmpdir:
+            tmp_save_path = os.path.join(tmpdir, "get_struc_seq.tsv")
+            cmd = [
+                self.foldseek,
+                "structureto3didescriptor",
+                "-v",
+                "0",
+                "--threads",
+                "1",
+                "--chain-name-mode",
+                "1",
+                pdb_file,
+                tmp_save_path,
+            ]
+
+            process = subprocess.Popen(
+                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+            )
+
+            stdout, stderr = process.communicate()
+            retcode = process.wait()
+
+            if retcode:
+
+                print("FoldSeek failed. stderr begin:")
+                for error_line in stderr.decode("utf-8").splitlines():
+                    if error_line.strip():
+                        print(error_line.strip())
+                        print("stderr end")
+                    raise RuntimeError(
+                        "FoldSeek failed\nstdout:\n%s\n\nstderr:\n%s\n"
+                        % (stdout.decode("utf-8"), stderr[:500_000].decode("utf-8"))
+                    )
+
+            seq_dict = StructuralAwareSequences(
+                source_structure=pdb_file,
+                seqs={},
+                foldseek_results=open(tmp_save_path, "r").read().strip(),
+            )
+
+            with open(tmp_save_path) as r:
+                for i, line in enumerate(r):
+                    desc, seq, struc_seq = line.split("\t")[:3]
+
+                    new_seq = StructuralAwareSequence(
+                        amino_acid_seq=seq,
+                        structural_seq=struc_seq,
+                        desc=desc,
+                        name=self.name,
+                    )
+
+                    # Mask low plddt
+                    if self.plddt_mask:
+                        np_seq = np.array(list(new_seq.structural_seq))
+                        np_seq[indices] = "#"
+                        new_seq.structural_seq = "".join(np_seq)
+
+                    seq_dict.seqs.update({new_seq.chain: new_seq})
+
+            return (
+                seq_dict
+                if chain_ids is None or len(chain_ids) == 0
+                else seq_dict.filtered(chains=tuple(chain_ids))
+            )
+
+    def parallel_queries(
+        self, pdb_files: Union[Tuple, List]
+    ) -> Tuple[StructuralAwareSequences]:
+        return tuple(
+            Parallel(n_jobs=self.nproc)(
+                delayed(self.query)(pdb_file) for pdb_file in pdb_files
+            )
+        )
+
+
 # Get structural seqs from pdb file
-def get_struc_seq(foldseek,
-                  path,
-                  chains: list = None,
-                  process_id: int = 0,
-                  plddt_mask: bool = False,
-                  plddt_threshold: float = 70.) -> StructuralAwareSequences:
+def get_struc_seq(
+    foldseek,
+    path,
+    chains: list = None,
+    process_id: int = 0,
+    plddt_mask: bool = False,
+    plddt_threshold: float = 70.0,
+) -> StructuralAwareSequences:
     """
-    
+
     Args:
         foldseek: Binary executable file of foldseek
         path: Path to pdb file
@@ -390,40 +515,46 @@ def get_struc_seq(foldseek,
         seq_dict: A dict of structural seqs. The keys are chain IDs. The values are tuples of
         (seq, struc_seq, combined_seq).
     """
-    assert os.path.exists(foldseek), f"Foldseek not found: {foldseek}"
-    assert os.path.exists(path), f"Pdb file not found: {path}"
-    
+
     tmp_save_path = f"get_struc_seq_{process_id}_{time.time()}.tsv"
     cmd = f"{foldseek} structureto3didescriptor -v 0 --threads 1 --chain-name-mode 1 {path} {tmp_save_path}"
     os.system(cmd)
-    
+
     name = os.path.basename(path)
-    seq_dict =StructuralAwareSequences(source_structure=path, seqs={})
+    seq_dict = StructuralAwareSequences(source_structure=path, seqs={})
     with open(tmp_save_path, "r") as r:
         for i, line in enumerate(r):
             desc, seq, struc_seq = line.split("\t")[:3]
 
-            new_seq=StructuralAwareSequence(amino_acid_seq=seq, structural_seq=struc_seq,desc=desc,name=name)
-            
+            new_seq = StructuralAwareSequence(
+                amino_acid_seq=seq, structural_seq=struc_seq, desc=desc, name=name
+            )
+
             # Mask low plddt
             if plddt_mask:
                 plddts = extract_plddt(path)
-                assert len(plddts) == len(struc_seq), f"Length mismatch: {len(plddts)} != {len(struc_seq)}"
-                
+                assert len(plddts) == len(
+                    struc_seq
+                ), f"Length mismatch: {len(plddts)} != {len(struc_seq)}"
+
                 # Mask regions with plddt < threshold
                 indices = np.where(plddts < plddt_threshold)[0]
                 np_seq = np.array(list(new_seq.structural_seq))
                 np_seq[indices] = "#"
                 new_seq.structural_seq = "".join(np_seq)
-            
+
             seq_dict.seqs.update({new_seq.chain: new_seq})
 
-        
     os.remove(tmp_save_path)
     os.remove(tmp_save_path + ".dbtype")
-    return seq_dict if chains is not None or len(chains) == 0 else seq_dict.filtered(chains=tuple(chains))
+    return (
+        seq_dict
+        if chains is not None or len(chains) == 0
+        else seq_dict.filtered(chains=tuple(chains))
+    )
 
 
+# TODO: multple chain?
 def extract_plddt(pdb_path: str) -> np.ndarray:
     """
     Extract plddt scores from pdb file.
@@ -436,9 +567,9 @@ def extract_plddt(pdb_path: str) -> np.ndarray:
     with open(pdb_path, "r") as r:
         plddt_dict = {}
         for line in r:
-            line = re.sub(' +', ' ', line).strip()
+            line = re.sub(" +", " ", line).strip()
             splits = line.split(" ")
-            
+
             if splits[0] == "ATOM":
                 # If position < 1000
                 if len(splits[4]) == 1:
@@ -450,20 +581,22 @@ def extract_plddt(pdb_path: str) -> np.ndarray:
                     pos = int(splits[4][1:])
 
                 plddt = float(splits[-2])
-                
+
                 if pos not in plddt_dict:
                     plddt_dict[pos] = [plddt]
                 else:
                     plddt_dict[pos].append(plddt)
-    
+
     plddts = np.array([np.mean(v) for v in plddt_dict.values()])
     return plddts
-    
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     foldseek = "/sujin/bin/foldseek"
     # test_path = "/sujin/Datasets/PDB/all/6xtd.cif"
     test_path = "/sujin/Datasets/FLIP/meltome/af2_structures/A0A061ACX4.pdb"
     plddt_path = "/sujin/Datasets/FLIP/meltome/af2_plddts/A0A061ACX4.json"
-    res = get_struc_seq(foldseek, test_path, plddt_path=plddt_path, plddt_threshold=70.)
+    res = get_struc_seq(
+        foldseek, test_path, plddt_path=plddt_path, plddt_threshold=70.0
+    )
     print(res["A"][1].lower())

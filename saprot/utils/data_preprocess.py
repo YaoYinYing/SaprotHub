@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, List, Literal, Tuple, Union
+import warnings
 import pandas as pd
 from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
 from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
@@ -9,7 +10,7 @@ from string import ascii_uppercase, ascii_lowercase
 from immutabledict import immutabledict
 from dataclasses import dataclass
 
-from saprot.utils.foldseek_util import StructuralAwareSequence, get_struc_seq, StructuralAwareSequences, Mask
+from saprot.utils.foldseek_util import StructuralAwareSequence, get_struc_seq, StructuralAwareSequences, Mask,FoldSeek
 
 from saprot.utils.mpr import MultipleProcessRunnerSimplifier
 
@@ -56,6 +57,49 @@ DATA_TYPES_HINT = Literal[
     "Multiple_pairs_of_PDB/CIF_Structures",
 ]
 
+@dataclass
+class UniProtID:
+    uniprot_id: str
+    uniprot_type: Literal['AF2']
+    chain_id: str
+
+    SA_seq: StructuralAwareSequences=None
+
+    @property
+    def SA(self) -> StructuralAwareSequence:
+        return self.SA_seq[self.chain_id]
+
+
+@dataclass
+class UniProtIDs:
+    uniprot_ids: Union[Tuple[UniProtID]]
+
+    def __post_init__(self):
+        if isinstance(self.uniprot_ids,UniProtID):
+            self.uniprot_ids = [self.uniprot_ids]
+    
+    @property
+    def all_labels(self) -> Tuple[str]:
+        return tuple(uniprot.uniprot_id for uniprot in self.uniprot_ids)
+    
+    @property
+    def is_AF2_structures(self) -> bool:
+        return all(x.uniprot_type == 'AF2' for x in self.uniprot_ids)
+    
+
+    def map_sa_to_uniprot_ids(self, sa_seqs:Tuple[StructuralAwareSequences]):
+
+        if not len(sa_seqs) == len(self.uniprot_ids):
+            raise ValueError(f"The number of uniprot ids ({len(self.uniprot_ids)}) and the number of sa_seqs ({len(sa_seqs)}) must be equal.")
+
+        for i, sa in enumerate(sa_seqs):
+            self.uniprot_ids[i].SA_seq = sa
+        return
+    
+    @property
+    def SA_seqs_as_tuple(self) -> Tuple[StructuralAwareSequence]:
+        return tuple(x.SA for x in self.uniprot_ids)
+    
 
 @dataclass
 class InputDataDispatcher:
@@ -65,56 +109,54 @@ class InputDataDispatcher:
     LMDB_HOME: str
     STRUCTURE_HOME: str
     FOLDSEEK_PATH: str
+    nproc: int= os.cpu_count()
     
     
+    def UniProtID2SA(self, proteins: Union[List[UniProtID], Tuple[UniProtID], UniProtID]) -> UniProtIDs:
+        protein_list = UniProtIDs(proteins)
+        files=self.uniprot2pdb(protein_list.uniprot_ids)
 
-    def parse_data(self, data_type: DATA_TYPES_HINT, raw_data) -> StructuralAwareSequence:
+        foldseeq_runner=FoldSeek(self.FOLDSEEK_PATH, plddt_mask=protein_list.is_AF2_structures,nproc=self.nproc)
+        sas=foldseeq_runner.parallel_queries(files)
+        protein_list.map_sa_to_uniprot_ids(sas)
+
+        return protein_list
+
+    def parse_data(self, data_type: DATA_TYPES_HINT, raw_data: Union[str, Tuple, List]) -> Tuple[StructuralAwareSequence]:
 
         # 0. Single AA Sequence
         if data_type == 'Single_AA_Sequence':
             input_seq: str = raw_data
 
-            aa_seq = input_seq.value
+            aa_seq = input_seq
 
-            sa_seq = ""
-            for aa in aa_seq:
-                sa_seq += aa + "#"
-            return sa_seq
+            return (StructuralAwareSequence(amino_acid_seq=aa_seq, structural_seq='#'*len(aa_seq)),)
 
         # 1. Single SA Sequence
         if data_type == 'Single_SA_Sequence':
             input_seq = raw_data
-            sa_seq = input_seq.value
+            sa_seq = input_seq
 
-            return sa_seq
+            return (StructuralAwareSequence(None,None).from_SA_sequence(sa_seq),)
 
         # 2. Single UniProt ID
         if data_type == 'Single_UniProt_ID':
             input_seq = raw_data
-            uniprot_id = input_seq.value
+            uniprot_id = input_seq
 
-            protein_list = [(uniprot_id, "AF2", "A")]
-            self.uniprot2pdb([protein_list[0][0]])
-            mprs = MultipleProcessRunnerSimplifier(
-                protein_list, pdb2sequence, n_process=2, return_results=True
-            )
-            seqs = mprs.run()
-            sa_seq = seqs[0].split("\t")[1]
-            return sa_seq
+            protein=UniProtID(uniprot_id,'AF2','A')
+            protein_list=self.UniProtID2SA(proteins=protein)
+
+            return protein_list.SA_seqs_as_tuple
 
         # 3. Single PDB/CIF Structure
         if data_type == 'Single_PDB/CIF_Structure':
-            uniprot_id = raw_data[0]
-            struc_type = raw_data[1].value
-            chain = raw_data[2].value
+            uniprot_id,struc_type,chain = raw_data[:3]
 
-            protein_list = [(uniprot_id, struc_type, chain)]
-            mprs = MultipleProcessRunnerSimplifier(
-                protein_list, pdb2sequence, n_process=2, return_results=True
-            )
-            seqs = mprs.run()
-            sa_seq = seqs[0].split("\t")[1]
-            return sa_seq
+            protein=UniProtID(uniprot_id,struc_type,chain)
+            protein_list=self.UniProtID2SA(protein)
+
+            return protein_list.SA_seqs_as_tuple
 
         # Multiple sequences
         # raw_data = upload_files/xxx.csv
@@ -125,21 +167,24 @@ class InputDataDispatcher:
         # 4. Multiple AA Sequences
         if data_type == 'Multiple_AA_Sequences':
             protein_df = pd.read_csv(uploaded_csv_path)
-            for index, value in protein_df["Sequence"].items():
-                sa_seq = ""
-                for aa in value:
-                    sa_seq += aa + "#"
-                protein_df.at[index, "Sequence"] = sa_seq
 
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
+            SA:List[StructuralAwareSequence]=[]
+
+            for index, aa_seq in protein_df["Sequence"].items():
+                SA.append(StructuralAwareSequence(amino_acid_seq=aa_seq, structural_seq='#'*len(aa_seq)))
+
+            return tuple(SA)
 
         # 5. Multiple SA Sequences
         if data_type == 'Multiple_SA_Sequences':
             protein_df = pd.read_csv(uploaded_csv_path)
 
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
+            SA:List[StructuralAwareSequence]=[]
+
+            for index, sa_seq in protein_df["Sequence"].items():
+                SA.append(StructuralAwareSequence(None,None).from_SA_sequence(sa_seq))
+
+            return tuple(SA)
 
         # 6. Multiple UniProt IDs
         if data_type == 'Multiple_UniProt_IDs':
@@ -290,6 +335,8 @@ class InputDataDispatcher:
             self.uniprot2pdb(protein_list1)
             protein_df["name_1"] = protein_list1
             protein_list1 = [(uniprot_id, "AF2", "A") for uniprot_id in protein_list1]
+
+
             mprs1 = MultipleProcessRunnerSimplifier(
                 protein_list1, pdb2sequence, n_process=2, return_results=True
             )
@@ -358,14 +405,23 @@ class InputDataDispatcher:
     ################################################################################
     ########################## Download predicted structures #######################
     ################################################################################
-    def uniprot2pdb(self,uniprot_ids, nprocess=20):
+    def uniprot2pdb(self,uniprot_ids, nprocess=20) -> Tuple[str]:
         from saprot.utils.downloader import AlphaDBDownloader
 
         os.makedirs(self.STRUCTURE_HOME, exist_ok=True)
+        # check exists files
+        exists_file=set([x for x in os.listdir(self.STRUCTURE_HOME) if x.endswith(".pdb") or x.endswith(".cif")])
+        if exists_file:
+            warnings.warn(f"{len(exists_file)} files already exists in {self.STRUCTURE_HOME}")
+
         af2_downloader = AlphaDBDownloader(
             uniprot_ids, "pdb", save_dir=self.STRUCTURE_HOME, n_process=nprocess
         )
         af2_downloader.run()
+
+        updated_files = set([x for x in os.listdir(self.STRUCTURE_HOME) if x.endswith(".pdb") or x.endswith(".cif")])
+        
+        return Tuple(updated_files.difference(exists_file))
 
 
     ################################################################################
