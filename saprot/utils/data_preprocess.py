@@ -12,13 +12,11 @@ from dataclasses import dataclass
 
 from saprot.utils.foldseek_util import (
     StructuralAwareSequence,
-    get_struc_seq,
     StructuralAwareSequences,
     Mask,
     FoldSeek,
 )
 
-from saprot.utils.mpr import MultipleProcessRunnerSimplifier
 
 from huggingface_hub import snapshot_download
 
@@ -202,11 +200,11 @@ class InputDataDispatcher:
         # raw_data = upload_files/xxx.csv
         if data_type.startswith("Multiple"):
             uploaded_csv_path = raw_data
-            csv_dataset_path = self.DATASET_HOME / uploaded_csv_path.name
+            csv_dataset_path = self.DATASET_HOME / uploaded_csv_path
 
         # 4. Multiple AA Sequences
         if data_type == "Multiple_AA_Sequences":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             SA: List[StructuralAwareSequence] = []
 
@@ -221,7 +219,7 @@ class InputDataDispatcher:
 
         # 5. Multiple SA Sequences
         if data_type == "Multiple_SA_Sequences":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             SA: List[StructuralAwareSequence] = []
 
@@ -232,7 +230,7 @@ class InputDataDispatcher:
 
         # 6. Multiple UniProt IDs
         if data_type == "Multiple_UniProt_IDs":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             protein_ids = protein_df.iloc[:, 0].tolist()
             protein_list = self.UniProtID2SA(
@@ -243,7 +241,7 @@ class InputDataDispatcher:
 
         # 7. Multiple PDB/CIF Structures
         if data_type == "Multiple_PDB/CIF_Structures":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             id_col = protein_df["Sequence"].to_list()
             type_col = protein_df["type"].to_list()
@@ -339,7 +337,7 @@ class InputDataDispatcher:
 
         # 13. Pair Multiple AA Sequences
         if data_type == "Multiple_pairs_of_AA_Sequences":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             pairs_1: list[StructuralAwareSequence] = [
                 StructuralAwareSequence(
@@ -369,7 +367,7 @@ class InputDataDispatcher:
 
         # 14. Pair Multiple SA Sequences
         if data_type == "Multiple_pairs_of_SA_Sequences":
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             pairs_1: list[StructuralAwareSequence] = [
                 StructuralAwareSequence(
@@ -400,7 +398,7 @@ class InputDataDispatcher:
         # 15. Pair Multiple UniProt IDs
         if data_type == "Multiple_pairs_of_UniProt_IDs":
 
-            protein_df = pd.read_csv(uploaded_csv_path)
+            protein_df = pd.read_csv(csv_dataset_path)
 
             protein_ids = protein_df.loc[:, "seq_1"].tolist()
             protein_list_1 = self.UniProtID2SA(
