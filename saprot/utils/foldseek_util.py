@@ -143,14 +143,21 @@ class StructuralAwareSequence:
     name_chain: Optional[str] = None
     chain: Optional[str] = None
 
+    skip_post_processing: bool = False
+
     def __post_init__(self):
         """
         Post-initialization method to clean up sequences and extract chain information from the description.
         Validates that the amino acid sequence and structural sequence have the same length.
         Removes file extensions from the name if present.
         """
+
+        if self.skip_post_processing:
+            return
+        
         if self.amino_acid_seq is None and self.structural_seq is None:
             return
+        
         self.amino_acid_seq = self.amino_acid_seq.strip()
         self.structural_seq = self.structural_seq.strip().lower()
         self.name_chain = self.desc.split(" ")[0]

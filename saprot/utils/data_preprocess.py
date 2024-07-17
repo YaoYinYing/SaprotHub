@@ -83,6 +83,15 @@ class UniProtID:
     def SA(self) -> StructuralAwareSequence:
         return self.SA_seq[self.chain_id]
 
+@dataclass
+class StructuralAwareSequencePair:
+    seq_1: StructuralAwareSequence
+    seq_2: StructuralAwareSequence
+
+    @property
+    def paired_sa(self):
+        raise NotImplementedError
+
 
 @dataclass
 class UniProtIDs:
@@ -144,7 +153,7 @@ class InputDataDispatcher:
 
     def parse_data(
         self, data_type: DATA_TYPES_HINT, raw_data: Union[str, Tuple, List]
-    ) -> Tuple[StructuralAwareSequence]:
+    ) -> Union[Tuple[StructuralAwareSequence], Tuple[StructuralAwareSequencePair]]:
 
         # 0. Single AA Sequence
         if data_type == "Single_AA_Sequence":
@@ -296,7 +305,7 @@ class InputDataDispatcher:
 
             uniprot_id_slice = slice(0, raw_datalen, 3)
             struc_type_slice = slice(1, raw_datalen, 3)
-            chain_slice = slice(2, raw_datalen, 3)
+            chain_slice      = slice(2, raw_datalen, 3)
 
             protein_list = self.UniProtID2SA(
                 proteins=[
@@ -318,39 +327,33 @@ class InputDataDispatcher:
         # 13. Pair Multiple AA Sequences
         if data_type == "Multiple_pairs_of_AA_Sequences":
             protein_df = pd.read_csv(uploaded_csv_path)
-            for index, value in protein_df["seq_1"].items():
-                sa_seq1 = ""
-                for aa in value:
-                    sa_seq1 += aa + "#"
-                protein_df.at[index, "seq_1"] = sa_seq1
 
-            protein_df["name_1"] = "name_1"
-            protein_df["chain_1"] = "A"
+            pairs_1: list[StructuralAwareSequence]=[StructuralAwareSequence(
+                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                ,name="name_1", chain="A", skip_post_processing=True) for aa_seq in protein_df["seq_1"].to_list()]
+            
+            pairs_2: list[StructuralAwareSequence]=[StructuralAwareSequence(
+                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                ,name="name_2", chain="A", skip_post_processing=True) for aa_seq in protein_df["seq_2"].to_list()]
+            
 
-            for index, value in protein_df["seq_2"].items():
-                sa_seq2 = ""
-                for aa in value:
-                    sa_seq2 += aa + "#"
-                protein_df.at[index, "seq_2"] = sa_seq2
-
-            protein_df["name_2"] = "name_2"
-            protein_df["chain_2"] = "A"
-
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
+            return tuple(StructuralAwareSequencePair(p1,p2) for p1,p2 in zip(pairs_1,pairs_2))
 
         # 14. Pair Multiple SA Sequences
         if data_type == "Multiple_pairs_of_SA_Sequences":
             protein_df = pd.read_csv(uploaded_csv_path)
 
-            protein_df["name_1"] = "name_1"
-            protein_df["chain_1"] = "A"
+            pairs_1: list[StructuralAwareSequence]=[StructuralAwareSequence(
+                    amino_acid_seq=None, structural_seq=None
+                ,name="name_1", chain="A", skip_post_processing=True).from_SA_sequence(sa_seq) for sa_seq in protein_df["seq_1"].to_list()]
+            
+            pairs_2: list[StructuralAwareSequence]=[StructuralAwareSequence(
+                    amino_acid_seq=None, structural_seq=None
+                ,name="name_2", chain="A", skip_post_processing=True).from_SA_sequence(sa_seq) for sa_seq in protein_df["seq_2"].to_list()]
+            
 
-            protein_df["name_2"] = "name_2"
-            protein_df["chain_2"] = "A"
+            return tuple(StructuralAwareSequencePair(p1,p2) for p1,p2 in zip(pairs_1,pairs_2))
 
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
 
         # 15. Pair Multiple UniProt IDs
         if data_type == "Multiple_pairs_of_UniProt_IDs":
