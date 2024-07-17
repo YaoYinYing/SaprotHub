@@ -14,6 +14,8 @@ def get_thermol_model():
         num_of_categories=10
     )
 
+    # weight_worker.device=torch.device('cpu')
+
     foldseek = FoldSeekSetup(
         bin_dir="./bin",
         base_url="https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/",
@@ -36,8 +38,13 @@ def get_thermol_model():
             outputs = model(inputs)
         outputs_list.append(outputs)
 
+    scores= [output.cpu().item() for output in outputs_list]
+
+    outputs= [output.squeeze().tolist() for output in outputs_list]
 
     print(outputs_list)
+    print(f'{scores=}')
+    print(f'{outputs=}')
 
 
 
