@@ -83,6 +83,11 @@ class UniProtID:
     def SA(self) -> StructuralAwareSequence:
         return self.SA_seq[self.chain_id]
 
+    def set_sa_name(self, name):
+        for sa in self.SA_seq.seqs.values():
+            sa.name = name
+
+
 @dataclass
 class StructuralAwareSequencePair:
     seq_1: StructuralAwareSequence
@@ -271,20 +276,23 @@ class InputDataDispatcher:
         # 9. Pair Single AA Sequences
         elif data_type == "A_pair_of_AA_Sequences":
 
-            return tuple(
-                StructuralAwareSequence(
-                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
-                )
-                for aa_seq in raw_data
+            return StructuralAwareSequencePair(
+                *[
+                    StructuralAwareSequence(
+                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                    )
+                    for aa_seq in raw_data
+                ]
             )
 
         # 10. Pair Single SA Sequences
         elif data_type == "A_pair_of_SA_Sequences":
-            input_seq_1, input_seq_2 = raw_data
 
-            return tuple(
-                StructuralAwareSequence(None, None).from_SA_sequence(sa_seq)
-                for sa_seq in raw_data
+            return StructuralAwareSequencePair(
+                *[
+                    StructuralAwareSequence(None, None).from_SA_sequence(sa_seq)
+                    for sa_seq in raw_data
+                ]
             )
 
         # 11. Pair Single UniProt IDs
@@ -293,7 +301,7 @@ class InputDataDispatcher:
             protein_list = self.UniProtID2SA(
                 proteins=[UniProtID(uniprot_id, "AF2", "A") for uniprot_id in raw_data]
             )
-            return protein_list.SA_seqs_as_tuple
+            return StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple)
 
         # 12. Pair Single PDB/CIF Structure
         if data_type == "A_pair_of_PDB/CIF_Structures":
@@ -305,7 +313,7 @@ class InputDataDispatcher:
 
             uniprot_id_slice = slice(0, raw_datalen, 3)
             struc_type_slice = slice(1, raw_datalen, 3)
-            chain_slice      = slice(2, raw_datalen, 3)
+            chain_slice = slice(2, raw_datalen, 3)
 
             protein_list = self.UniProtID2SA(
                 proteins=[
@@ -317,7 +325,7 @@ class InputDataDispatcher:
                     )
                 ]
             )
-            return protein_list.SA_seqs_as_tuple
+            return StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple)
 
         # # Pair raw_data = upload_files/xxx.csv
         # if data_type in data_type_list[12:16]:
@@ -328,63 +336,87 @@ class InputDataDispatcher:
         if data_type == "Multiple_pairs_of_AA_Sequences":
             protein_df = pd.read_csv(uploaded_csv_path)
 
-            pairs_1: list[StructuralAwareSequence]=[StructuralAwareSequence(
-                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
-                ,name="name_1", chain="A", skip_post_processing=True) for aa_seq in protein_df["seq_1"].to_list()]
-            
-            pairs_2: list[StructuralAwareSequence]=[StructuralAwareSequence(
-                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
-                ,name="name_2", chain="A", skip_post_processing=True) for aa_seq in protein_df["seq_2"].to_list()]
-            
+            pairs_1: list[StructuralAwareSequence] = [
+                StructuralAwareSequence(
+                    amino_acid_seq=aa_seq,
+                    structural_seq="#" * len(aa_seq),
+                    name="name_1",
+                    chain="A",
+                    skip_post_processing=True,
+                )
+                for aa_seq in protein_df["seq_1"].to_list()
+            ]
 
-            return tuple(StructuralAwareSequencePair(p1,p2) for p1,p2 in zip(pairs_1,pairs_2))
+            pairs_2: list[StructuralAwareSequence] = [
+                StructuralAwareSequence(
+                    amino_acid_seq=aa_seq,
+                    structural_seq="#" * len(aa_seq),
+                    name="name_2",
+                    chain="A",
+                    skip_post_processing=True,
+                )
+                for aa_seq in protein_df["seq_2"].to_list()
+            ]
+
+            return tuple(
+                StructuralAwareSequencePair(p1, p2) for p1, p2 in zip(pairs_1, pairs_2)
+            )
 
         # 14. Pair Multiple SA Sequences
         if data_type == "Multiple_pairs_of_SA_Sequences":
             protein_df = pd.read_csv(uploaded_csv_path)
 
-            pairs_1: list[StructuralAwareSequence]=[StructuralAwareSequence(
-                    amino_acid_seq=None, structural_seq=None
-                ,name="name_1", chain="A", skip_post_processing=True).from_SA_sequence(sa_seq) for sa_seq in protein_df["seq_1"].to_list()]
-            
-            pairs_2: list[StructuralAwareSequence]=[StructuralAwareSequence(
-                    amino_acid_seq=None, structural_seq=None
-                ,name="name_2", chain="A", skip_post_processing=True).from_SA_sequence(sa_seq) for sa_seq in protein_df["seq_2"].to_list()]
-            
+            pairs_1: list[StructuralAwareSequence] = [
+                StructuralAwareSequence(
+                    amino_acid_seq=None,
+                    structural_seq=None,
+                    name="name_1",
+                    chain="A",
+                    skip_post_processing=True,
+                ).from_SA_sequence(sa_seq)
+                for sa_seq in protein_df["seq_1"].to_list()
+            ]
 
-            return tuple(StructuralAwareSequencePair(p1,p2) for p1,p2 in zip(pairs_1,pairs_2))
+            pairs_2: list[StructuralAwareSequence] = [
+                StructuralAwareSequence(
+                    amino_acid_seq=None,
+                    structural_seq=None,
+                    name="name_2",
+                    chain="A",
+                    skip_post_processing=True,
+                ).from_SA_sequence(sa_seq)
+                for sa_seq in protein_df["seq_2"].to_list()
+            ]
 
+            return tuple(
+                StructuralAwareSequencePair(p1, p2) for p1, p2 in zip(pairs_1, pairs_2)
+            )
 
         # 15. Pair Multiple UniProt IDs
         if data_type == "Multiple_pairs_of_UniProt_IDs":
+
             protein_df = pd.read_csv(uploaded_csv_path)
-            protein_list1 = protein_df.loc[:, "seq_1"].tolist()
-            self.uniprot2pdb(protein_list1)
-            protein_df["name_1"] = protein_list1
-            protein_list1 = [(uniprot_id, "AF2", "A") for uniprot_id in protein_list1]
 
-            mprs1 = MultipleProcessRunnerSimplifier(
-                protein_list1, pdb2sequence, n_process=2, return_results=True
+            protein_ids = protein_df.loc[:, "seq_1"].tolist()
+            protein_list_1 = self.UniProtID2SA(
+                [UniProtID(_id, "AF2", "A") for _id in protein_ids]
             )
-            outputs1 = mprs1.run()
+            for x in protein_list_1.uniprot_ids:
+                x.set_sa_name("name_1")
 
-            protein_df["seq_1"] = [output.split("\t")[1] for output in outputs1]
-            protein_df["chain_1"] = "A"
-
-            protein_list2 = protein_df.loc[:, "seq_2"].tolist()
-            self.uniprot2pdb(protein_list2)
-            protein_df["name_2"] = protein_list2
-            protein_list2 = [(uniprot_id, "AF2", "A") for uniprot_id in protein_list2]
-            mprs2 = MultipleProcessRunnerSimplifier(
-                protein_list2, pdb2sequence, n_process=2, return_results=True
+            protein_ids = protein_df.loc[:, "seq_2"].tolist()
+            protein_list_2 = self.UniProtID2SA(
+                [UniProtID(_id, "AF2", "A") for _id in protein_ids]
             )
-            outputs2 = mprs2.run()
+            for x in protein_list_2.uniprot_ids:
+                x.set_sa_name("name_2")
 
-            protein_df["seq_2"] = [output.split("\t")[1] for output in outputs2]
-            protein_df["chain_2"] = "A"
-
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
+            return tuple(
+                StructuralAwareSequencePair(p1, p2)
+                for p1, p2 in zip(
+                    protein_list_1.SA_seqs_as_tuple, protein_list_2.SA_seqs_as_tuple
+                )
+            )
 
         # # 13-16. Pair Multiple Sequences
         # elif data_type in data_type_list[12:16]:
@@ -397,35 +429,25 @@ class InputDataDispatcher:
             protein_df = pd.read_csv(uploaded_csv_path)
             # columns: seq_1, seq_2, type_1, type_2, chain_1, chain_2, label, stage
 
-            # protein_list = [(uniprot_id, type, chain), ...]
-            # protein_list = [item.split('.')[0] for item in protein_df.iloc[:, 0].tolist()]
-            # self.uniprot2pdb(protein_list)
-
+            protein_pair: list[UniProtIDs] = []
             for i in range(1, 3):
-                protein_list = []
+                protein_table: list[UniProtID] = []
                 for index, row in protein_df.iterrows():
-                    assert row[f"type_{i}"] in [
-                        "PDB",
-                        "AF2",
-                    ], 'The type of structure must be either "PDB" or "AF2"!'
                     row_tuple = (row[f"seq_{i}"], row[f"type_{i}"], row[f"chain_{i}"])
-                    protein_list.append(row_tuple)
-                mprs = MultipleProcessRunnerSimplifier(
-                    protein_list, pdb2sequence, n_process=2, return_results=True
-                )
-                outputs = mprs.run()
+                    protein_table.append(UniProtID(*row_tuple))
 
-                # add name column, del type column
-                protein_df[f"name_{i}"] = protein_df[f"seq_{i}"].apply(
-                    lambda x: x.split(".")[0]
-                )
-                protein_df.drop(f"type_{i}", axis=1, inplace=True)
-                print(outputs)
-                protein_df[f"seq_{i}"] = [output.split("\t")[1] for output in outputs]
+                p: UniProtIDs = self.UniProtID2SA(protein_table)
+                for x in p.uniprot_ids:
+                    x.set_sa_name(f"name_{i}")
 
-            # columns: name_1, name_2, chain_1, chain_2, seq_1, seq_2, label, stage
-            protein_df.to_csv(csv_dataset_path, index=None)
-            return csv_dataset_path
+                protein_pair.append(p)
+
+            return tuple(
+                StructuralAwareSequencePair(s1, s2)
+                for s1, s2 in zip(
+                    protein_pair[0].SA_seqs_as_tuple, protein_pair[1].SA_seqs_as_tuple
+                )
+            )
 
     ################################################################################
     ########################## Download predicted structures #######################
@@ -462,114 +484,6 @@ class InputDataDispatcher:
 
         return Tuple(updated_files.difference(exists_file))
 
-    ################################################################################
-    ############### Form foldseek sequences by multiple processes ##################
-    ################################################################################
-    # def pdb2sequence(process_id, idx, uniprot_id, writer):
-    #   from saprot.utils.foldseek_util import get_struc_seq
-
-    #   try:
-    #     pdb_path = f"{STRUCTURE_HOME}/{uniprot_id}.pdb"
-    #     cif_path = f"{STRUCTURE_HOME}/{uniprot_id}.cif"
-    #     if Path(pdb_path).exists():
-    #       seq = get_struc_seq(FOLDSEEK_PATH, pdb_path, ["A"], process_id=process_id)["A"][-1]
-    #     if Path(cif_path).exists():
-    #       seq = get_struc_seq(FOLDSEEK_PATH, cif_path, ["A"], process_id=process_id)["A"][-1]
-
-    #     writer.write(f"{uniprot_id}\t{seq}\n")
-    #   except Exception as e:
-    #     print(f"Error: {uniprot_id}, {e}")
-
-    # clear_output(wait=True)
-    # print("Installation finished!")
-
-
-def pdb2sequence(process_id, idx, row_tuple, writer, STRUCTURE_HOME, FOLDSEEK_PATH):
-
-    # print("="*100)
-    # print(row_tuple)
-    # print("="*100)
-    uniprot_id = row_tuple[0].split(".")[0]  #
-    struc_type = row_tuple[1]  # PDB or AF2
-    chain = row_tuple[2]
-
-    if struc_type == "AF2":
-        plddt_mask = True
-        chain = "A"
-    else:
-        plddt_mask = False
-
-    try:
-        pdb_path = f"{STRUCTURE_HOME}/{uniprot_id}.pdb"
-        cif_path = f"{STRUCTURE_HOME}/{uniprot_id}.cif"
-        if Path(pdb_path).exists():
-            seq = get_struc_seq(
-                FOLDSEEK_PATH,
-                pdb_path,
-                [chain],
-                process_id=process_id,
-                plddt_mask=plddt_mask,
-            )[chain][-1]
-        elif Path(cif_path).exists():
-            seq = get_struc_seq(
-                FOLDSEEK_PATH,
-                cif_path,
-                [chain],
-                process_id=process_id,
-                plddt_mask=plddt_mask,
-            )[chain][-1]
-        else:
-            raise BaseException(
-                f"The {uniprot_id}.pdb/{uniprot_id}.cif file doesn't exists!"
-            )
-        writer.write(f"{uniprot_id}\t{seq}\n")
-
-    except Exception as e:
-        print(f"Error: {uniprot_id}, {e}")
-
-
-pymol_color_list = [
-    "#33ff33",
-    "#00ffff",
-    "#ff33cc",
-    "#ffff00",
-    "#ff9999",
-    "#e5e5e5",
-    "#7f7fff",
-    "#ff7f00",
-    "#7fff7f",
-    "#199999",
-    "#ff007f",
-    "#ffdd5e",
-    "#8c3f99",
-    "#b2b2b2",
-    "#007fff",
-    "#c4b200",
-    "#8cb266",
-    "#00bfbf",
-    "#b27f7f",
-    "#fcd1a5",
-    "#ff7f7f",
-    "#ffbfdd",
-    "#7fffff",
-    "#ffff7f",
-    "#00ff7f",
-    "#337fcc",
-    "#d8337f",
-    "#bfff3f",
-    "#ff7fff",
-    "#d8d8ff",
-    "#3fffbf",
-    "#b78c4c",
-    "#339933",
-    "#66b2b2",
-    "#ba8c84",
-    "#84bf00",
-    "#b24c66",
-    "#7f7f7f",
-    "#3f3fa5",
-    "#a5512b",
-]
 
 alphabet_list = list(ascii_uppercase + ascii_lowercase)
 
