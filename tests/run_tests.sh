@@ -11,3 +11,4 @@ python tests/inverse_folding.py
 python tests/deep_mutagenese_scan.py
 
 python tests/call_tmalign.py
+python tests/thermalstability.py

@@ -62,6 +62,15 @@ class PretrainedModel:
 
     device: str = "auto"
 
+    def check_device(self):
+        if self.device == "auto":
+            self.device = best_device()
+            print(f"Using device: {self.device}")
+        else:
+            self.device = torch.device(self.device)
+        
+
+
     @property
     def weights_dir(self):
         """Returns the full path to the model's weights."""
@@ -73,11 +82,8 @@ class PretrainedModel:
         Validates the HuggingFace ID and directory paths, and downloads the model if necessary.
         """
 
-        if self.device == "auto":
-            self.device = best_device()
-            print(f"Using device: {self.device}")
-        else:
-            self.device = torch.device(self.device)
+
+        self.check_device()
 
         if self.loader_type is None:
             self.loader_type = "native"
@@ -197,7 +203,7 @@ class PretrainedModel:
 @dataclass
 class AdaptedModel(PretrainedModel):
 
-    task_type: ALL_TASKS_HINT = None
+    task_type: ALL_TASKS_HINT=None
 
     _lora_kwargs: dict = field(default_factory=dict)
     _config: EasyDict = None
@@ -211,6 +217,8 @@ class AdaptedModel(PretrainedModel):
             raise ValueError(
                 f"Task type {self.task_type} is not supported. Available tasks: {ALL_TASKS}"
             )
+        
+        self.check_device()
 
         from saprot.config.config_dict import ConfigPreset
 
@@ -304,7 +312,7 @@ class AdaptedModel(PretrainedModel):
 
         self.update_config()
 
-        print(self.config)
+        #print(self.config)
         model = ModelDispatcher(
             task=self.task_type, config=self.config.model
         ).dispatch()

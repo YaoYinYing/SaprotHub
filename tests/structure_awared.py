@@ -11,7 +11,6 @@ def main():
 
     print(foldseek)
     parsed_seqs = FoldSeek(foldseek, ["A"], plddt_mask=False).query(pdb_file=pdb_path)
-    #print(parsed_seqs)
 
     parsed_seqs = parsed_seqs.get("A")
 

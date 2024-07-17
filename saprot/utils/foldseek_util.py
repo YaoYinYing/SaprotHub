@@ -242,7 +242,11 @@ class StructuralAwareSequences:
     source_structure: str = None
     seqs: dict[str, StructuralAwareSequence] = field(default_factory=dict)
 
-    foldseek_results: str = None
+    foldseek_results: tuple[str] = None
+
+
+    def __str__(self):
+        return f'Source structure: {self.source_structure}\nSequences: {self.seqs}'
 
     def filtered(self, chains: tuple[str]) -> "StructuralAwareSequences":
         """
@@ -418,6 +422,9 @@ class FoldSeek:
             raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
 
     def query(self, pdb_file: str, chain_ids: tuple[str] = None) -> StructuralAwareSequences:
+        if pdb_file is None or not os.path.exists(pdb_file):
+            raise FileNotFoundError(f"PDB file not found: {pdb_file}")
+        
         self.name = os.path.basename(pdb_file)
         if self.plddt_mask:
             plddts = extract_plddt(pdb_file)
@@ -447,8 +454,7 @@ class FoldSeek:
             retcode = process.wait()
 
             if retcode:
-
-                print("FoldSeek failed. stderr begin:")
+                print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())
@@ -457,37 +463,39 @@ class FoldSeek:
                         "FoldSeek failed\nstdout:\n%s\n\nstderr:\n%s\n"
                         % (stdout.decode("utf-8"), stderr[:500_000].decode("utf-8"))
                     )
+                
+            ret=tuple(open(tmp_save_path, "r").read().strip().split("\n"))
 
-            seq_dict = StructuralAwareSequences(
-                source_structure=pdb_file,
-                seqs={},
-                foldseek_results=open(tmp_save_path, "r").read().strip(),
+        seq_dict = StructuralAwareSequences(
+            source_structure=pdb_file,
+            seqs={},
+            foldseek_results=ret,
+        )
+
+            
+        for i, line in enumerate(seq_dict.foldseek_results):
+            desc, seq, struc_seq = line.split("\t")[:3]
+
+            new_seq = StructuralAwareSequence(
+                amino_acid_seq=seq,
+                structural_seq=struc_seq,
+                desc=desc,
+                name=self.name,
             )
 
-            with open(tmp_save_path) as r:
-                for i, line in enumerate(r):
-                    desc, seq, struc_seq = line.split("\t")[:3]
+            # Mask low plddt
+            if self.plddt_mask:
+                np_seq = np.array(list(new_seq.structural_seq))
+                np_seq[indices] = "#"
+                new_seq.structural_seq = "".join(np_seq)
 
-                    new_seq = StructuralAwareSequence(
-                        amino_acid_seq=seq,
-                        structural_seq=struc_seq,
-                        desc=desc,
-                        name=self.name,
-                    )
+            seq_dict.seqs.update({new_seq.chain: new_seq})
 
-                    # Mask low plddt
-                    if self.plddt_mask:
-                        np_seq = np.array(list(new_seq.structural_seq))
-                        np_seq[indices] = "#"
-                        new_seq.structural_seq = "".join(np_seq)
-
-                    seq_dict.seqs.update({new_seq.chain: new_seq})
-
-            return (
-                seq_dict
-                if chain_ids is None or len(chain_ids) == 0
-                else seq_dict.filtered(chains=tuple(chain_ids))
-            )
+        return (
+            seq_dict
+            if chain_ids is None or len(chain_ids) == 0
+            else seq_dict.filtered(chains=tuple(chain_ids))
+        )
 
     def parallel_queries(
         self, pdb_files: Union[Tuple, List]

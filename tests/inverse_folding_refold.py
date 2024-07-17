@@ -20,7 +20,7 @@ def refold(
     structure_seq: StructuralAwareSequence, seqs: list[str], mask: Mask, save_dir: str = "."
 ):
     model_loader = PretrainedModel(
-        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"),
+        dir=os.path.abspath("./weights/SaProt/"),
         model_name="esmfold_v1",
         huggingface_id="facebook",
         loader_type="esmfold",

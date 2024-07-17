@@ -10,7 +10,7 @@ from saprot.utils.weights import PretrainedModel
 
 def main():
     model_loader = PretrainedModel(
-        dir=os.path.abspath("/Users/yyy/.REvoDesign/weights/SaProt/"),
+        dir=os.path.abspath("./weights/SaProt/"),
         model_name="SaProt_650M_AF2",
     )
 

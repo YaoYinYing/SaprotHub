@@ -7,10 +7,10 @@ from deep_mutagenese_scan import run_dms
 
 def get_thermol_model():
     weight_worker = AdaptedModel(
-        dir="/Users/yyy/.REvoDesign/weights/SaProt/",
+        dir="./weights/SaProt/",
         huggingface_id="SaProtHub",
         model_name="Model-Thermostability-650M",
-        task_type='classification',
+        task_type='regression',
         num_of_categories=10
     )
 
@@ -19,16 +19,18 @@ def get_thermol_model():
         base_url="https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/",
     ).foldseek
 
+    pdb_dir='example/tmalign/inverse_folding_refold'
+
     model,tokenizer=weight_worker.load_model()
 
-    pdbs=[i for i in os.listdir('example/tmalign/inverse_folding_refold') if i.endswith('.pdb')]
+    pdbs=[i for i in os.listdir(pdb_dir) if i.endswith('.pdb')]
 
-    seqs=[FoldSeek(foldseek, plddt_mask=False).query(pdb)['A'] for pdb in pdbs]
+    seqs=[FoldSeek(foldseek, plddt_mask=False).query(os.path.join(pdb_dir,pdb))['A'] for pdb in pdbs]
 
     outputs_list=[]
 
     for i, s in enumerate(seqs):
-        inputs = tokenizer(s, return_tensors="pt")
+        inputs = tokenizer(s.combined_sequence, return_tensors="pt")
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad(): 
             outputs = model(inputs)
