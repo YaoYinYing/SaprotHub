@@ -260,7 +260,6 @@ class InputDataDispatcher:
 
         # 8. SaprotHub Dataset
         elif data_type == "SaprotHub_Dataset":
-            raise NotImplementedError
             input_repo_id = raw_data
             REPO_ID = input_repo_id
 
@@ -271,7 +270,13 @@ class InputDataDispatcher:
                 repo_id=REPO_ID, repo_type="dataset", local_dir=self.LMDB_HOME / REPO_ID
             )
 
-            return self.LMDB_HOME / REPO_ID
+            dataset_dir=self.LMDB_HOME / REPO_ID
+            csv_files=[x for x in os.listdir(dataset_dir) if x.endswith(".csv")]
+
+            for csv in csv_files:
+                raise NotImplementedError
+
+            return 
 
         # 9. Pair Single AA Sequences
         elif data_type == "A_pair_of_AA_Sequences":
