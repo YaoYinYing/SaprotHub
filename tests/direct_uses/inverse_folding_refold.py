@@ -15,7 +15,10 @@ from .inverse_folding import inverse_folding
 
 
 def refold(
-    structure_seq: StructuralAwareSequence, seqs: list[str], mask: Mask, save_dir: str = "."
+    structure_seq: StructuralAwareSequence,
+    seqs: list[str],
+    mask: Mask,
+    save_dir: str = ".",
 ):
     model_loader = PretrainedModel(
         dir=os.path.abspath("./weights/SaProt/"),
@@ -29,7 +32,6 @@ def refold(
     esmfold.trunk.set_chunk_size(64)
 
     device = esmfold.device
-
 
     fold_id = structure_seq.name
     chain_id = structure_seq.chain
@@ -45,9 +47,7 @@ def refold(
         )
 
 
-
 def run_esmfold(model, tokenizer, save_name, seq, save_dir):
-
     ################################################################################
     ################################## PREDICT ###################################
     ################################################################################
@@ -92,7 +92,10 @@ def main():
     pdb_save_path = os.path.join(save_path, "esmfold")
     os.makedirs(pdb_save_path, exist_ok=True)
     refold(
-        structure_seq=parsed_seqs, seqs=pred_aa_seqs, mask=mask, save_dir=pdb_save_path
+        structure_seq=parsed_seqs,
+        seqs=pred_aa_seqs,
+        mask=mask,
+        save_dir=pdb_save_path,
     )
 
 

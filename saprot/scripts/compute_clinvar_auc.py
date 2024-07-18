@@ -10,12 +10,18 @@ from easydict import EasyDict
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', help="running configurations", type=str, required=True)
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="running configurations",
+        type=str,
+        required=True,
+    )
     return parser.parse_args()
 
 
 def main(args):
-    with open(args.config, 'r', encoding='utf-8') as r:
+    with open(args.config, "r", encoding="utf-8") as r:
         config = EasyDict(yaml.safe_load(r))
 
     output_dir = "/content/saprot/output/ClinVar"
@@ -44,10 +50,11 @@ def main(args):
 
     all_evol_indices_with_labels = all_evol_indices_with_labels[
         all_evol_indices_with_labels.ClinVar_labels != 0.5
-        ]
+    ]
 
     fpr, tpr, threshold = metrics.roc_curve(
-        all_evol_indices_with_labels["ClinVar_labels"], all_evol_indices_with_labels["evol_indices"]
+        all_evol_indices_with_labels["ClinVar_labels"],
+        all_evol_indices_with_labels["evol_indices"],
     )
     roc_auc = metrics.auc(fpr, tpr)
     print(roc_auc)
@@ -85,13 +92,15 @@ def my_clinvar_auc(config):
 
     all_evol_indices_with_labels = all_evol_indices_with_labels[
         all_evol_indices_with_labels.ClinVar_labels != 0.5
-        ]
+    ]
 
     fpr, tpr, threshold = metrics.roc_curve(
-        all_evol_indices_with_labels["ClinVar_labels"], all_evol_indices_with_labels["evol_indices"]
+        all_evol_indices_with_labels["ClinVar_labels"],
+        all_evol_indices_with_labels["evol_indices"],
     )
     roc_auc = metrics.auc(fpr, tpr)
     print(roc_auc)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main(get_args())

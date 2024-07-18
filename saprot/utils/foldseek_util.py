@@ -169,11 +169,11 @@ class StructuralAwareSequence:
 
         if self.name.endswith(".cif") or self.name.endswith(".pdb"):
             self.name = self.name[:-4]
+
     @property
     def _blind(self):
-        return self.structural_seq.strip('#') == '' 
-    
-    
+        return self.structural_seq.strip("#") == ""
+
     def from_SA_sequence(self, SA_sequence: str):
         seq_len = len(SA_sequence)
         if not (seq_len > 0 and seq_len % 2 == 0):
@@ -186,7 +186,6 @@ class StructuralAwareSequence:
         self.structural_seq = SA_sequence[st_seq_islice]
 
         return self
-    
 
     @property
     def combined_sequence(self) -> str:
@@ -203,7 +202,6 @@ class StructuralAwareSequence:
             )
         )
         return combined_sequence
-    
 
     def masked_seq(self, mask: "Mask") -> str:
         """
@@ -261,7 +259,11 @@ class StructuralAwareSequences:
         """
         return StructuralAwareSequences(
             source_structure=self.source_structure,
-            seqs={chain: seq for chain, seq in self.seqs.items() if chain in chains},
+            seqs={
+                chain: seq
+                for chain, seq in self.seqs.items()
+                if chain in chains
+            },
         )
 
     def __getitem__(self, chain_id: str):
@@ -314,7 +316,9 @@ class FoldSeekSetup:
     # Gather system information
     uname = platform.uname()
     cpu_info = subprocess.run(
-        ["cat", "/proc/cpuinfo"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        ["cat", "/proc/cpuinfo"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
     ).stdout.decode("utf8")
 
     arch: str = uname.machine
@@ -402,7 +406,9 @@ class FoldSeekSetup:
             p = platformdirs.user_cache_dir("FoldSeek")
             tar.extractall(path=p)
 
-            os.rename(os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path)
+            os.rename(
+                os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path
+            )
 
         os.remove(compressed_file_path)
         if not os.path.exists(self.bin_path):
@@ -458,8 +464,12 @@ class FoldSeek:
             stdout, stderr = process.communicate()
             retcode = process.wait()
 
-            if retcode and not (result_exists := os.path.exists(tmp_save_path)):
-                print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
+            if retcode and not (
+                result_exists := os.path.exists(tmp_save_path)
+            ):
+                print(
+                    f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:"
+                )
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())

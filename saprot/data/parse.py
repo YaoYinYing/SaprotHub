@@ -5,7 +5,15 @@ import numpy as np
 
 
 from Bio import pairwise2
-from Bio.PDB import PDBParser, FastMMCIFParser, Atom, Model, Structure, Chain, Residue
+from Bio.PDB import (
+    PDBParser,
+    FastMMCIFParser,
+    Atom,
+    Model,
+    Structure,
+    Chain,
+    Residue,
+)
 from Bio.PDB.PDBIO import PDBIO
 from Bio.PDB.mmcifio import MMCIFIO
 
@@ -14,14 +22,34 @@ mmcif_parser = FastMMCIFParser(QUIET=True)
 mmcif_io = MMCIFIO()
 pdb_parser = PDBParser(QUIET=True)
 pdb_io = PDBIO()
-aa3to1 = {'CYS': 'C', 'ASP': 'D', 'SER': 'S', 'GLN': 'Q', 'LYS': 'K',
-          'ILE': 'I', 'PRO': 'P', 'THR': 'T', 'PHE': 'F', 'ASN': 'N',
-          'GLY': 'G', 'HIS': 'H', 'LEU': 'L', 'ARG': 'R', 'TRP': 'W',
-          'ALA': 'A', 'VAL': 'V', 'GLU': 'E', 'TYR': 'Y', 'MET': 'M'}
+aa3to1 = {
+    "CYS": "C",
+    "ASP": "D",
+    "SER": "S",
+    "GLN": "Q",
+    "LYS": "K",
+    "ILE": "I",
+    "PRO": "P",
+    "THR": "T",
+    "PHE": "F",
+    "ASN": "N",
+    "GLY": "G",
+    "HIS": "H",
+    "LEU": "L",
+    "ARG": "R",
+    "TRP": "W",
+    "ALA": "A",
+    "VAL": "V",
+    "GLU": "E",
+    "TYR": "Y",
+    "MET": "M",
+}
 aa1to3 = {v: k for k, v in aa3to1.items()}
 
 
-def create_pdb_from_backbone(backbone_coords_dict: dict, output_file: str, residue_types: list = None):
+def create_pdb_from_backbone(
+    backbone_coords_dict: dict, output_file: str, residue_types: list = None
+):
     """
     Create a PDB file from the backbone coordinates
     Args:
@@ -31,46 +59,55 @@ def create_pdb_from_backbone(backbone_coords_dict: dict, output_file: str, resid
 
     """
     # Create a Structure object
-    structure = Structure.Structure('backbone_structure')
-    
+    structure = Structure.Structure("backbone_structure")
+
     # Create a Model object within the structure
     model = Model.Model(0)
-    
+
     # Create a Chain object within the model
-    chain = Chain.Chain('A')
-    
+    chain = Chain.Chain("A")
+
     # Get the length of the protein
     for value in backbone_coords_dict.values():
         length = len(value)
         break
-    
+
     if residue_types is None:
-        residue_types = ['ALA'] * length
-    
+        residue_types = ["ALA"] * length
+
     for i in range(length):
-        residue = Residue.Residue((' ', i+1, ' '), residue_types[i], 1)
-    
+        residue = Residue.Residue((" ", i + 1, " "), residue_types[i], 1)
+
         # Create Atom objects for N, CA, C, and O with their coordinates
         for atom_name, coordinates in backbone_coords_dict.items():
-            atom = Atom.Atom(atom_name, coordinates[i], 0, 0, ' ', atom_name, i+1, atom_name)
+            atom = Atom.Atom(
+                atom_name,
+                coordinates[i],
+                0,
+                0,
+                " ",
+                atom_name,
+                i + 1,
+                atom_name,
+            )
             atom.set_coord(coordinates[i])
             residue.add(atom)
-        
+
         # Add the residue to the chain
         chain.add(residue)
-    
+
     # Add the chain to the model
     model.add(chain)
-    
+
     # Add the model to the structure
     structure.add(model)
-    
+
     io = pdb_io if output_file.endswith("pdb") else mmcif_io
-    
+
     # Save the structure to a PDB file
     io.set_structure(structure)
     io.save(output_file)
-    
+
 
 def is_residue_valid(residue, CA_only: bool = False) -> bool:
     """
@@ -83,20 +120,25 @@ def is_residue_valid(residue, CA_only: bool = False) -> bool:
     Returns:
         True if the residue has all atoms
     """
-    atoms = ['N', 'CA', 'C', 'O'] if not CA_only else ['CA']
-    
+    atoms = ["N", "CA", "C", "O"] if not CA_only else ["CA"]
+
     res_name = residue.get_resname()
-    if res_name not in aa3to1 or sum([0 if atom in residue else 1 for atom in atoms]) > 0:
+    if (
+        res_name not in aa3to1
+        or sum([0 if atom in residue else 1 for atom in atoms]) > 0
+    ):
         return False
-    
+
     else:
         return True
-    
+
 
 # Refine a pdb structure given rotation matrices and translation vectors
-def save_refined_pdb(path, format, chain, new_coords: np.ndarray, save_path=None):
+def save_refined_pdb(
+    path, format, chain, new_coords: np.ndarray, save_path=None
+):
     """
-    
+
     Args:
         path: path to pdb file
         format: pdb or mmcif
@@ -105,28 +147,28 @@ def save_refined_pdb(path, format, chain, new_coords: np.ndarray, save_path=None
         save_path: path to save refined pdb file
 
     """
-    assert format in ['pdb', 'mmcif'], "Only support pdb and mmcif format"
-    
+    assert format in ["pdb", "mmcif"], "Only support pdb and mmcif format"
+
     chain = get_structure(path, format, chain)
     atoms = ["N", "CA", "C", "O"]
-    
+
     cnt = 0
     for residue in chain.get_residues():
         res_name = residue.get_resname()
         if res_name not in aa3to1:
             continue
-        
+
         # Ensure that the residue has all atoms
         if sum([0 if atom in residue else 1 for atom in atoms]) > 0:
             continue
-        
+
         atom_coords = new_coords[cnt]
         for atom, new_atom_coord in zip(residue, atom_coords):
             atom.set_coord(new_atom_coord)
-            
+
         cnt += 1
 
-    if format == 'pdb':
+    if format == "pdb":
         pdb_io.set_structure(chain)
         pdb_io.save(save_path)
     else:
@@ -139,7 +181,7 @@ def get_seq(chain):
     seqs = []
     delete_id = []
     index2id = {}
-    atoms = ['N', 'CA', 'C', 'O']
+    atoms = ["N", "CA", "C", "O"]
     residues = chain.get_residues()
 
     for residue in residues:
@@ -164,22 +206,24 @@ def get_seq(chain):
 def get_chain(path, chain):
     _, file = os.path.split(path)
     name, format = os.path.splitext(file)
-    assert format in ['.pdb', '.cif'], "Only support pdb and mmcif format"
-    
-    parser = pdb_parser if format == '.pdb' else mmcif_parser
+    assert format in [".pdb", ".cif"], "Only support pdb and mmcif format"
+
+    parser = pdb_parser if format == ".pdb" else mmcif_parser
     structure = parser.get_structure(name, path)
     return structure[0][chain]
 
 
 # Align two chains and save the aligned structures as new pdb files.
-def align_structure_output(chain1,
-                           chain2,
-                           save_path1=None,
-                           save_path2=None,
-                           plddt1=None,
-                           plddt2=None,
-                           plddt_save_path1=None,
-                           plddt_save_path2=None,):
+def align_structure_output(
+    chain1,
+    chain2,
+    save_path1=None,
+    save_path2=None,
+    plddt1=None,
+    plddt2=None,
+    plddt_save_path1=None,
+    plddt_save_path2=None,
+):
     """
     plddt file is for AF2 structures. We remove corresponding positions in plddt file.
 
@@ -207,7 +251,7 @@ def align_structure_output(chain1,
             # Amino acid of seq1 matches a gap. Ignore this amino acid.
             seq1_ignore.append(seq1_pos)
             seq1_pos += 1
-    
+
     # Remove the ignored amino acids
     for i in [1, 2]:
         chain = eval(f"chain{i}")
@@ -217,21 +261,21 @@ def align_structure_output(chain1,
         delete_id = eval(f"delete_id{i}")
         plddt_path = eval(f"plddt{i}")
         plddt_save_path = eval(f"plddt_save_path{i}")
-        
+
         if plddt_path is not None:
             plddt = json.load(open(plddt_path, "r"))
             tmp_dict = {}
             for k, v in plddt.items():
                 np_v = np.array(v)
-                
+
                 selector = np.ones(len(v), dtype=bool)
                 selector[seq_ignore] = False
                 np_v = np_v[selector]
-                
+
                 tmp_dict[k] = np_v.tolist()
-            
+
             json.dump(tmp_dict, open(plddt_save_path, "w"))
-        
+
         for index in seq_ignore:
             chain.detach_child(index2id[index])
 
@@ -249,46 +293,50 @@ def align_structure_output(chain1,
 def align_structure(dict1, dict2):
     dict1 = copy.deepcopy(dict1)
     dict2 = copy.deepcopy(dict2)
-    
+
     seq1 = dict1["seq"]
     seq2 = dict2["seq"]
-    
+
     alignments = pairwise2.align.globalxx(seq1, seq2)
     aligned_seq1, aligned_seq2, _, _, _ = alignments[0]
-    
+
     seq1_pos, seq2_pos = 0, 0
     seq1_ignore, seq2_ignore = [], []
     for i, (aa_seq1, aa_seq2) in enumerate(zip(aligned_seq1, aligned_seq2)):
         if aa_seq1 != "-" and aa_seq2 != "-":
             seq1_pos += 1
             seq2_pos += 1
-        
+
         elif aa_seq1 == "-":
             # Amino acid of seq2 matches a gap. Ignore this amino acid.
             seq2_ignore.append(seq2_pos)
             seq2_pos += 1
-        
+
         else:
             # Amino acid of seq1 matches a gap. Ignore this amino acid.
             seq1_ignore.append(seq1_pos)
             seq1_pos += 1
-    
+
     return_dict = []
-    for parsed_dict, seq_ignore in zip((dict1, dict2), (seq1_ignore, seq2_ignore)):
+    for parsed_dict, seq_ignore in zip(
+        (dict1, dict2), (seq1_ignore, seq2_ignore)
+    ):
         np_seq = np.array(list(parsed_dict["seq"]))
         np_coords = {k: np.array(v) for k, v in parsed_dict["coords"].items()}
-        
+
         selected = np.ones_like(np_seq).astype(bool)
         selected[seq_ignore] = False
-        
+
         parsed_dict["seq"] = "".join(np_seq[selected])
-        parsed_dict["coords"] = {k: v[selected].tolist() for k, v in np_coords.items()}
-        
+        parsed_dict["coords"] = {
+            k: v[selected].tolist() for k, v in np_coords.items()
+        }
+
         return_dict.append(parsed_dict)
 
     return return_dict
 
-    
+
 def split_chain(in_path, out_path, chain_id, new_chain_id: str = None) -> None:
     """
     Split a chain from a pdb file and save it as a new pdb file.
@@ -298,12 +346,12 @@ def split_chain(in_path, out_path, chain_id, new_chain_id: str = None) -> None:
         chain_id: Chain id to be split.
         new_chain_id: New chain id. If None, the new chain id will be the same as the old chain id.
     """
-    
+
     in_format = os.path.splitext(in_path)[1]
     out_format = os.path.splitext(out_path)[1]
     assert in_format in [".pdb", ".cif"], "Input format must be pdb or cif."
     assert out_format in [".pdb", ".cif"], "Output format must be pdb or cif."
-    
+
     parser = pdb_parser if in_format == ".pdb" else mmcif_parser
     structure = parser.get_structure("input", in_path)
     io = pdb_io if out_format == ".pdb" else mmcif_io
@@ -326,22 +374,20 @@ def get_chain_ids(path: str) -> list:
         A list of chain ids.
 
     """
-    
+
     _, file = os.path.split(path)
     name, format = os.path.splitext(file)
-    assert format in ['.pdb', '.cif'], "Only support pdb and mmcif format"
-    
+    assert format in [".pdb", ".cif"], "Only support pdb and mmcif format"
+
     parser = pdb_parser if format == ".pdb" else mmcif_parser
     structure = parser.get_structure(name, path)
-    
+
     return [chain.get_id() for chain in structure[0].get_chains()]
 
 
-def extract_pdb_section(input_pdb,
-                        output_pdb,
-                        chain_id,
-                        start_residue,
-                        end_residue) -> None:
+def extract_pdb_section(
+    input_pdb, output_pdb, chain_id, start_residue, end_residue
+) -> None:
     """
     Extract a section of a pdb file.
     Args:
@@ -354,7 +400,7 @@ def extract_pdb_section(input_pdb,
 
     in_format = input_pdb.split(".")[-1]
     parser = pdb_parser if in_format == "pdb" else mmcif_parser
-    structure = parser.get_structure('input', input_pdb)
+    structure = parser.get_structure("input", input_pdb)
 
     # Iterate over the chains in the structure
     for chain in structure[0]:
@@ -364,7 +410,6 @@ def extract_pdb_section(input_pdb,
             cnt = 0
             for residue in chain:
                 if cnt < start_residue - 1 or cnt > end_residue - 1:
-
                     residues_to_remove.append(residue.id)
                 cnt += 1
 
@@ -378,7 +423,10 @@ def extract_pdb_section(input_pdb,
             io.set_structure(chain)
             io.save(output_pdb)
 
-def remove_pdb_section(input_pdb, output_pdb, chain_id, remove_residues: list) -> None:
+
+def remove_pdb_section(
+    input_pdb, output_pdb, chain_id, remove_residues: list
+) -> None:
     """
     Remove residues from a pdb file.
     Args:
@@ -387,10 +435,10 @@ def remove_pdb_section(input_pdb, output_pdb, chain_id, remove_residues: list) -
         chain_id: Chain id of the residues to be removed.
         remove_residues: A index list of residue ids to be removed. Starts from 1.
     """
-    
+
     in_format = input_pdb.split(".")[-1]
     parser = pdb_parser if in_format == "pdb" else mmcif_parser
-    structure = parser.get_structure('input', input_pdb)
+    structure = parser.get_structure("input", input_pdb)
 
     # Iterate over the chains in the structure
     for chain in structure[0]:
@@ -437,16 +485,20 @@ def parse_structure(path, chains: list = None, CA_only: bool = False) -> dict:
     _, file = os.path.split(path)
     name, format = os.path.splitext(file)
 
-    assert format in ['.pdb', '.cif'], "Only support pdb and mmcif format"
-    
+    assert format in [".pdb", ".cif"], "Only support pdb and mmcif format"
+
     parser = pdb_parser if format == ".pdb" else mmcif_parser
     structure = parser.get_structure(name, path)
 
     parsed_dicts = {}
-    chains = structure[0].get_chains() if chains is None else [structure[0][chain_id] for chain_id in chains]
+    chains = (
+        structure[0].get_chains()
+        if chains is None
+        else [structure[0][chain_id] for chain_id in chains]
+    )
     for chain in chains:
         residues = chain.get_residues()
-        atoms = ['N', 'CA', 'C', 'O'] if not CA_only else ['CA']
+        atoms = ["N", "CA", "C", "O"] if not CA_only else ["CA"]
         coords = {atom: [] for atom in atoms}
 
         seq = []
@@ -457,15 +509,15 @@ def parse_structure(path, chains: list = None, CA_only: bool = False) -> dict:
                 for atom in atoms:
                     coords[atom].append(residue[atom].get_coord().tolist())
 
-        parsed_dict = {"name": name,
-                       "chain": chain.get_id(),
-                       "seq": "".join(seq),
-                       "coords": coords}
-        
+        parsed_dict = {
+            "name": name,
+            "chain": chain.get_id(),
+            "seq": "".join(seq),
+            "coords": coords,
+        }
+
         # Skip empty chains
         if len(parsed_dict["seq"]) != 0:
             parsed_dicts[chain.get_id()] = parsed_dict
 
     return parsed_dicts
-
-    

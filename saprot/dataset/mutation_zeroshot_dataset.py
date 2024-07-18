@@ -29,17 +29,19 @@ class MutationZeroShotDataset(LMDBDataset):
 
     def collate_fn(self, batch):
         seqs, mut_info, fitness = zip(*batch)
-        
+
         plddt = self._get("plddt")
         if plddt is not None:
             plddt = json.loads(plddt)
-        
-        inputs = {"wild_type": self._get("wild_type"),
-                  "seqs": seqs,
-                  "mut_info": mut_info,
-                  "structure_content": self._get("structure_content"),
-                  "structure_type": self._get("structure_type"),
-                  "plddt": plddt}
+
+        inputs = {
+            "wild_type": self._get("wild_type"),
+            "seqs": seqs,
+            "mut_info": mut_info,
+            "structure_content": self._get("structure_content"),
+            "structure_type": self._get("structure_type"),
+            "plddt": plddt,
+        }
 
         labels = {"labels": torch.Tensor(fitness)}
 

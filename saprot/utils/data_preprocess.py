@@ -5,7 +5,10 @@ import warnings
 import pandas as pd
 
 import pooch
-from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
+from transformers.models.esm.openfold_utils.protein import (
+    to_pdb,
+    Protein as OFProtein,
+)
 from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
 from string import ascii_uppercase, ascii_lowercase
 
@@ -41,7 +44,9 @@ class UniProtID:
                 f"UniProt type must be either 'AF2' or 'PDB', got {self.uniprot_type}"
             )
 
-        if self.uniprot_id.endswith(".pdb") or self.uniprot_id.endswith(".cif"):
+        if self.uniprot_id.endswith(".pdb") or self.uniprot_id.endswith(
+            ".cif"
+        ):
             self.uniprot_id = self.uniprot_id[:-4]
 
     @property
@@ -80,7 +85,6 @@ class UniProtIDs:
         return all(x.uniprot_type == "AF2" for x in self.uniprot_ids)
 
     def map_sa_to_uniprot_ids(self, sa_seqs: tuple[StructuralAwareSequences]):
-
         if not len(sa_seqs) == len(self.uniprot_ids):
             raise ValueError(
                 f"The number of uniprot ids ({len(self.uniprot_ids)}) and the number of sa_seqs ({len(sa_seqs)}) must be equal."
@@ -112,9 +116,9 @@ class InputDataDispatcher:
     ) -> UniProtIDs:
         protein_list = UniProtIDs(proteins)
 
-        files = StructureDownloader(data_type="pdb", save_dir=self.STRUCTURE_HOME).run(
-            payload=protein_list.uniprot_ids
-        )
+        files = StructureDownloader(
+            data_type="pdb", save_dir=self.STRUCTURE_HOME
+        ).run(payload=protein_list.uniprot_ids)
 
         foldseeq_runner = FoldSeek(
             self.FOLDSEEK_PATH,
@@ -128,7 +132,9 @@ class InputDataDispatcher:
 
     def parse_data(
         self, data_type: DATA_TYPES_HINT, raw_data: Union[str, tuple, list]
-    ) -> Union[tuple[StructuralAwareSequence], tuple[StructuralAwareSequencePair]]:
+    ) -> Union[
+        tuple[StructuralAwareSequence], tuple[StructuralAwareSequencePair]
+    ]:
         if raw_data is None:
             raise ValueError("No data provided")
 
@@ -179,7 +185,10 @@ class InputDataDispatcher:
         # Multiple sequences
         # raw_data = upload_files/xxx.csv
         if data_type.startswith("Multiple"):
-            if not (raw_data.startswith("http://") or raw_data.startswith("https://")):
+            if not (
+                raw_data.startswith("http://")
+                or raw_data.startswith("https://")
+            ):
                 uploaded_csv_path = raw_data
                 csv_dataset_path = os.path.join(
                     self.DATASET_HOME, os.path.basename(uploaded_csv_path)
@@ -270,11 +279,15 @@ class InputDataDispatcher:
                 return Path(REPO_ID)
 
             snapshot_download(
-                repo_id=REPO_ID, repo_type="dataset", local_dir=self.LMDB_HOME / REPO_ID
+                repo_id=REPO_ID,
+                repo_type="dataset",
+                local_dir=self.LMDB_HOME / REPO_ID,
             )
 
             dataset_dir = os.path.join(self.LMDB_HOME, REPO_ID)
-            csv_files = [x for x in os.listdir(dataset_dir) if x.endswith(".csv")]
+            csv_files = [
+                x for x in os.listdir(dataset_dir) if x.endswith(".csv")
+            ]
 
             for csv in csv_files:
                 raise NotImplementedError
@@ -289,7 +302,9 @@ class InputDataDispatcher:
                         "The raw data should be a comma separated string of two amino acid sequences if it is a string"
                     )
                 raw_data = raw_data.split(",")
-            if not (isinstance(raw_data, (list, tuple)) and len(raw_data) == 2):
+            if not (
+                isinstance(raw_data, (list, tuple)) and len(raw_data) == 2
+            ):
                 raise ValueError(
                     "The raw data should be a list/tuple of two amino acid sequences if it is a list/tuple"
                 )
@@ -309,7 +324,6 @@ class InputDataDispatcher:
 
         # 10. Pair Single SA Sequences
         elif data_type == "A_pair_of_SA_Sequences":
-
             return (
                 StructuralAwareSequencePair(
                     *[
@@ -323,15 +337,18 @@ class InputDataDispatcher:
 
         # 11. Pair Single UniProt IDs
         elif data_type == "A_pair_of_UniProt_IDs":
-
             protein_list = self.UniProtID2SA(
-                proteins=[UniProtID(uniprot_id, "AF2", "A") for uniprot_id in raw_data]
+                proteins=[
+                    UniProtID(uniprot_id, "AF2", "A")
+                    for uniprot_id in raw_data
+                ]
             )
-            return (StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),)
+            return (
+                StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),
+            )
 
         # 12. Pair Single PDB/CIF Structure
         if data_type == "A_pair_of_PDB/CIF_Structures":
-
             if raw_datalen := len(raw_data) % 3 != 0:
                 raise ValueError(
                     "The length of the raw_data should be a multiple of 3."
@@ -351,7 +368,9 @@ class InputDataDispatcher:
                     )
                 ]
             )
-            return (StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),)
+            return (
+                StructuralAwareSequencePair(*protein_list.SA_seqs_as_tuple),
+            )
 
         # # Pair raw_data = upload_files/xxx.csv
         # if data_type in data_type_list[12:16]:
@@ -385,7 +404,8 @@ class InputDataDispatcher:
             ]
 
             return tuple(
-                StructuralAwareSequencePair(p1, p2) for p1, p2 in zip(pairs_1, pairs_2)
+                StructuralAwareSequencePair(p1, p2)
+                for p1, p2 in zip(pairs_1, pairs_2)
             )
 
         # 14. Pair Multiple SA Sequences
@@ -415,12 +435,12 @@ class InputDataDispatcher:
             ]
 
             return tuple(
-                StructuralAwareSequencePair(p1, p2) for p1, p2 in zip(pairs_1, pairs_2)
+                StructuralAwareSequencePair(p1, p2)
+                for p1, p2 in zip(pairs_1, pairs_2)
             )
 
         # 15. Pair Multiple UniProt IDs
         if data_type == "Multiple_pairs_of_UniProt_IDs":
-
             protein_df = pd.read_csv(csv_dataset_path)
 
             protein_ids = protein_df.loc[:, "seq_1"].tolist()
@@ -440,7 +460,8 @@ class InputDataDispatcher:
             return tuple(
                 StructuralAwareSequencePair(p1, p2)
                 for p1, p2 in zip(
-                    protein_list_1.SA_seqs_as_tuple, protein_list_2.SA_seqs_as_tuple
+                    protein_list_1.SA_seqs_as_tuple,
+                    protein_list_2.SA_seqs_as_tuple,
                 )
             )
 
@@ -459,7 +480,11 @@ class InputDataDispatcher:
             for i in range(1, 3):
                 protein_table: list[UniProtID] = []
                 for index, row in protein_df.iterrows():
-                    row_tuple = (row[f"seq_{i}"], row[f"type_{i}"], row[f"chain_{i}"])
+                    row_tuple = (
+                        row[f"seq_{i}"],
+                        row[f"type_{i}"],
+                        row[f"chain_{i}"],
+                    )
                     protein_table.append(UniProtID(*row_tuple))
 
                 p: UniProtIDs = self.UniProtID2SA(protein_table)
@@ -471,7 +496,8 @@ class InputDataDispatcher:
             return tuple(
                 StructuralAwareSequencePair(s1, s2)
                 for s1, s2 in zip(
-                    protein_pair[0].SA_seqs_as_tuple, protein_pair[1].SA_seqs_as_tuple
+                    protein_pair[0].SA_seqs_as_tuple,
+                    protein_pair[1].SA_seqs_as_tuple,
                 )
             )
 
@@ -498,7 +524,9 @@ def convert_outputs_to_pdb(outputs):
             atom_mask=mask,
             residue_index=resid,
             b_factors=outputs["plddt"][i],
-            chain_index=outputs["chain_index"][i] if "chain_index" in outputs else None,
+            chain_index=outputs["chain_index"][i]
+            if "chain_index" in outputs
+            else None,
         )
         pdbs.append(to_pdb(pred))
     return pdbs

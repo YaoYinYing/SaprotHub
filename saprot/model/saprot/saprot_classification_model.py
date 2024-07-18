@@ -17,7 +17,7 @@ class SaprotClassificationModel(SaprotBaseModel):
         """
         self.num_labels = num_labels
         super().__init__(task="classification", **kwargs)
-        
+
     def initialize_metrics(self, stage):
         return {f"{stage}_acc": torchmetrics.Accuracy()}
 
@@ -27,7 +27,9 @@ class SaprotClassificationModel(SaprotBaseModel):
 
         # If backbone is frozen, the embedding will be the average of all residues
         if self.freeze_backbone:
-            repr = torch.stack(self.get_hidden_states_from_dict(inputs, reduction="mean"))
+            repr = torch.stack(
+                self.get_hidden_states_from_dict(inputs, reduction="mean")
+            )
             x = self.model.classifier.dropout(repr)
             x = self.model.classifier.dense(x)
             x = torch.tanh(x)
@@ -36,11 +38,11 @@ class SaprotClassificationModel(SaprotBaseModel):
 
         else:
             logits = self.model(**inputs).logits
-        
+
         return logits
 
     def loss_func(self, stage, logits, labels):
-        label = labels['labels']
+        label = labels["labels"]
         loss = cross_entropy(logits, label)
 
         # Update metrics
@@ -64,11 +66,11 @@ class SaprotClassificationModel(SaprotBaseModel):
 
         # if dist.get_rank() == 0:
         #     print(log_dict)
-        print('='*100)
-        print('Test Result:')
+        print("=" * 100)
+        print("Test Result:")
         for key, value in log_dict.items():
             print(f"{key}: {value.item()}")
-        print('='*100)
+        print("=" * 100)
         self.log_info(log_dict)
         self.reset_metrics("test")
 

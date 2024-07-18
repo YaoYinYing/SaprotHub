@@ -12,29 +12,33 @@ def load_esm_saprot(path: str):
     Args:
         path: path to SaProt model
     """
-    
+
     # Initialize the alphabet
     tokens = ["<cls>", "<pad>", "<eos>", "<unk>", "<mask>"]
-    for seq_token, struc_token in itertools.product(foldseek_seq_vocab, foldseek_struc_vocab):
+    for seq_token, struc_token in itertools.product(
+        foldseek_seq_vocab, foldseek_struc_vocab
+    ):
         token = seq_token + struc_token
         tokens.append(token)
-    
-    alphabet = esm.data.Alphabet(standard_toks=tokens,
-                                 prepend_toks=[],
-                                 append_toks=[],
-                                 prepend_bos=True,
-                                 append_eos=True,
-                                 use_msa=False)
-    
+
+    alphabet = esm.data.Alphabet(
+        standard_toks=tokens,
+        prepend_toks=[],
+        append_toks=[],
+        prepend_bos=True,
+        append_eos=True,
+        use_msa=False,
+    )
+
     alphabet.all_toks = alphabet.all_toks[:-2]
     alphabet.unique_no_split_tokens = alphabet.all_toks
     alphabet.tok_to_idx = {tok: i for i, tok in enumerate(alphabet.all_toks)}
-    
+
     # Load weights
     data = torch.load(path)
     weights = data["model"]
     config = data["config"]
-    
+
     # Initialize the model
     model = ESM2(
         num_layers=config["num_layers"],
@@ -43,7 +47,7 @@ def load_esm_saprot(path: str):
         alphabet=alphabet,
         token_dropout=config["token_dropout"],
     )
-    
+
     load_weights(model, weights)
     return model, alphabet
 
@@ -63,10 +67,14 @@ def load_weights(model, weights):
             unused_params.append(k)
 
     if len(missed_params) > 0:
-        print(f"\033[31mSome weights of {type(model).__name__} were not "
-              f"initialized from the model checkpoint: {missed_params}\033[0m")
+        print(
+            f"\033[31mSome weights of {type(model).__name__} were not "
+            f"initialized from the model checkpoint: {missed_params}\033[0m"
+        )
 
     if len(unused_params) > 0:
-        print(f"\033[31mSome weights of the model checkpoint were not used: {unused_params}\033[0m")
+        print(
+            f"\033[31mSome weights of the model checkpoint were not used: {unused_params}\033[0m"
+        )
 
     model.load_state_dict(model_dict)

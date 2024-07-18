@@ -16,13 +16,15 @@ class SaprotRegressionModel(SaprotBaseModel):
         """
         self.test_result_path = test_result_path
         super().__init__(task="regression", **kwargs)
-    
+
     def initialize_metrics(self, stage):
-        return {f"{stage}_loss": torchmetrics.MeanSquaredError(),
-                f"{stage}_spearman": torchmetrics.SpearmanCorrCoef(),
-                f"{stage}_R2": torchmetrics.R2Score(),
-                f"{stage}_pearson": torchmetrics.PearsonCorrCoef()}
-    
+        return {
+            f"{stage}_loss": torchmetrics.MeanSquaredError(),
+            f"{stage}_spearman": torchmetrics.SpearmanCorrCoef(),
+            f"{stage}_R2": torchmetrics.R2Score(),
+            f"{stage}_pearson": torchmetrics.PearsonCorrCoef(),
+        }
+
     def forward(self, inputs, structure_info=None):
         if structure_info:
             # To be implemented
@@ -33,7 +35,9 @@ class SaprotRegressionModel(SaprotBaseModel):
             # If backbone is frozen, the embedding will be the average of all residues, else it will be the
             # embedding of the <cls> token.
             if self.freeze_backbone:
-                repr = torch.stack(self.get_hidden_states_from_dict(inputs, reduction="mean"))
+                repr = torch.stack(
+                    self.get_hidden_states_from_dict(inputs, reduction="mean")
+                )
                 x = self.model.classifier.dropout(repr)
                 x = self.model.classifier.dense(x)
                 x = torch.tanh(x)
@@ -51,7 +55,7 @@ class SaprotRegressionModel(SaprotBaseModel):
         return logits
 
     def loss_func(self, stage, outputs, labels):
-        fitness = labels['labels'].to(outputs)
+        fitness = labels["labels"].to(outputs)
         loss = torch.nn.functional.mse_loss(outputs, fitness)
 
         # Update metrics
@@ -59,11 +63,11 @@ class SaprotRegressionModel(SaprotBaseModel):
             # Training is on half precision, but metrics expect float to compute correctly.
             metric.set_dtype(torch.float32)
             metric.update(outputs.detach(), fitness)
-            
+
         if stage == "train":
             log_dict = {"train_loss": loss.item()}
             self.log_info(log_dict)
-            
+
             # Reset train metrics
             self.reset_metrics("train")
 
@@ -72,31 +76,39 @@ class SaprotRegressionModel(SaprotBaseModel):
     def on_test_epoch_end(self):
         if self.test_result_path is not None:
             from torchmetrics.utilities.distributed import gather_all_tensors
-            
+
             preds = self.test_spearman.preds
-            preds[-1] = preds[-1].unsqueeze(dim=0) if preds[-1].shape == () else preds[-1]
+            preds[-1] = (
+                preds[-1].unsqueeze(dim=0)
+                if preds[-1].shape == ()
+                else preds[-1]
+            )
             preds = torch.cat(gather_all_tensors(torch.cat(preds, dim=0)))
-            
+
             targets = self.test_spearman.target
-            targets[-1] = targets[-1].unsqueeze(dim=0) if targets[-1].shape == () else targets[-1]
+            targets[-1] = (
+                targets[-1].unsqueeze(dim=0)
+                if targets[-1].shape == ()
+                else targets[-1]
+            )
             targets = torch.cat(gather_all_tensors(torch.cat(targets, dim=0)))
 
             if dist.get_rank() == 0:
-                with open(self.test_result_path, 'w') as w:
+                with open(self.test_result_path, "w") as w:
                     w.write("pred\ttarget\n")
                     for pred, target in zip(preds, targets):
                         w.write(f"{pred.item()}\t{target.item()}\n")
-        
+
         log_dict = self.get_log_dict("test")
 
         # if dist.get_rank() == 0:
         #     print(log_dict)
 
-        print('='*100)
-        print('Test Result:')
+        print("=" * 100)
+        print("Test Result:")
         for key, value in log_dict.items():
             print(f"{key}: {value.item()}")
-        print('='*100)
+        print("=" * 100)
 
         self.log_info(log_dict)
         self.reset_metrics("test")
@@ -109,5 +121,5 @@ class SaprotRegressionModel(SaprotBaseModel):
         self.log_info(log_dict)
         self.reset_metrics("valid")
         self.check_save_condition(log_dict["valid_loss"], mode="min")
-        
+
         self.plot_valid_metrics_curve(log_dict)

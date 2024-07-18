@@ -8,11 +8,13 @@ from ..data_interface import register_dataset
 
 @register_dataset
 class SaprotPairRegressionDataset(LMDBDataset):
-    def __init__(self,
-                 tokenizer: str,
-                 max_length: int = 1024,
-                 plddt_threshold: float = None,
-                 **kwargs):
+    def __init__(
+        self,
+        tokenizer: str,
+        max_length: int = 1024,
+        plddt_threshold: float = None,
+        **kwargs,
+    ):
         """
         Args:
             tokenizer: Path to tokenizer
@@ -30,7 +32,7 @@ class SaprotPairRegressionDataset(LMDBDataset):
 
     def __getitem__(self, index):
         entry = json.loads(self._get(index))
-        seq_1, seq_2 = entry['seq_1'], entry['seq_2']
+        seq_1, seq_2 = entry["seq_1"], entry["seq_2"]
 
         if not isinstance(self.tokenizer, EsmTokenizer):
             seq_1 = " ".join(seq_1)
@@ -38,7 +40,7 @@ class SaprotPairRegressionDataset(LMDBDataset):
 
         # Mask structure tokens with pLDDT < threshold
         if self.plddt_threshold is not None:
-            plddt_1, plddt_2 = entry['plddt_1'], entry['plddt_2']
+            plddt_1, plddt_2 = entry["plddt_1"], entry["plddt_2"]
             tokens = self.tokenizer.tokenize(seq_1)
             seq_1 = ""
             assert len(tokens) == len(plddt_1)
@@ -57,10 +59,10 @@ class SaprotPairRegressionDataset(LMDBDataset):
                 else:
                     seq_2 += token
 
-        tokens = self.tokenizer.tokenize(seq_1)[:self.max_length]
+        tokens = self.tokenizer.tokenize(seq_1)[: self.max_length]
         seq_1 = " ".join(tokens)
 
-        tokens = self.tokenizer.tokenize(seq_2)[:self.max_length]
+        tokens = self.tokenizer.tokenize(seq_2)[: self.max_length]
         seq_2 = " ".join(tokens)
 
         return seq_1, seq_2, entry["label"]
@@ -74,9 +76,12 @@ class SaprotPairRegressionDataset(LMDBDataset):
         label_ids = torch.tensor(label_ids)
         labels = {"labels": label_ids}
 
-        encoder_info_1 = self.tokenizer.batch_encode_plus(seqs_1, return_tensors='pt', padding=True)
-        encoder_info_2 = self.tokenizer.batch_encode_plus(seqs_2, return_tensors='pt', padding=True)
-        inputs = {"inputs_1": encoder_info_1,
-                  "inputs_2": encoder_info_2}
+        encoder_info_1 = self.tokenizer.batch_encode_plus(
+            seqs_1, return_tensors="pt", padding=True
+        )
+        encoder_info_2 = self.tokenizer.batch_encode_plus(
+            seqs_2, return_tensors="pt", padding=True
+        )
+        inputs = {"inputs_1": encoder_info_1, "inputs_2": encoder_info_2}
 
         return inputs, labels

@@ -9,15 +9,17 @@ from ..lmdb_dataset import *
 
 @register_dataset
 class SaprotClassificationDataset(LMDBDataset):
-    def __init__(self,
-                 tokenizer: str,
-                 use_bias_feature: bool = False,
-                 max_length: int = 1024,
-                 preset_label: int = None,
-                 mask_struc_ratio: float = None,
-                 mask_seed: int = 20000812,
-                 plddt_threshold: float = None,
-                 **kwargs):
+    def __init__(
+        self,
+        tokenizer: str,
+        use_bias_feature: bool = False,
+        max_length: int = 1024,
+        preset_label: int = None,
+        mask_struc_ratio: float = None,
+        mask_seed: int = 20000812,
+        plddt_threshold: float = None,
+        **kwargs,
+    ):
         """
         Args:
             tokenizer: Path to tokenizer
@@ -40,23 +42,23 @@ class SaprotClassificationDataset(LMDBDataset):
 
     def __getitem__(self, index):
         entry = json.loads(self._get(index))
-        seq = entry['seq']
+        seq = entry["seq"]
 
         # Mask structure tokens
         if self.mask_struc_ratio is not None:
             tokens = self.tokenizer.tokenize(seq)
             mask_candi = [i for i, t in enumerate(tokens) if t[-1] != "#"]
-            
+
             # Randomly shuffle the mask candidates and set seed to ensure mask is consistent
             random.seed(self.mask_seed)
             random.shuffle(mask_candi)
-            
+
             # Mask first n structure tokens
             mask_num = int(len(mask_candi) * self.mask_struc_ratio)
             for i in range(mask_num):
                 idx = mask_candi[i]
                 tokens[idx] = tokens[idx][:-1] + "#"
-            
+
             seq = "".join(tokens)
 
         # Mask structure tokens with pLDDT < threshold
@@ -70,15 +72,19 @@ class SaprotClassificationDataset(LMDBDataset):
                 else:
                     seq += token
 
-        tokens = self.tokenizer.tokenize(seq)[:self.max_length]
+        tokens = self.tokenizer.tokenize(seq)[: self.max_length]
         seq = " ".join(tokens)
-        
+
         if self.use_bias_feature:
-            coords = {k: v[:self.max_length] for k, v in entry['coords'].items()}
+            coords = {
+                k: v[: self.max_length] for k, v in entry["coords"].items()
+            }
         else:
             coords = None
 
-        label = entry["label"] if self.preset_label is None else self.preset_label
+        label = (
+            entry["label"] if self.preset_label is None else self.preset_label
+        )
 
         return seq, label, coords
 
@@ -90,8 +96,10 @@ class SaprotClassificationDataset(LMDBDataset):
 
         label_ids = torch.tensor(label_ids, dtype=torch.long)
         labels = {"labels": label_ids}
-    
-        encoder_info = self.tokenizer.batch_encode_plus(seqs, return_tensors='pt', padding=True)
+
+        encoder_info = self.tokenizer.batch_encode_plus(
+            seqs, return_tensors="pt", padding=True
+        )
         inputs = {"inputs": encoder_info}
         if self.use_bias_feature:
             inputs["coords"] = coords

@@ -19,7 +19,6 @@ def main():
         base_url="https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/",
     ).foldseek
 
-
     config = {
         "foldseek_path": foldseek,
         "config_path": model_loader.weights_dir,

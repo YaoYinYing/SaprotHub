@@ -60,7 +60,9 @@ class StructureDownloader:
             }
             base_url = "https://alphafold.ebi.ac.uk/files/"
             filename = url_dict[self.data_type].format(data_id.uniprot_id)
-            file_save_name = save_dict[self.data_type].format(data_id.uniprot_id)
+            file_save_name = save_dict[self.data_type].format(
+                data_id.uniprot_id
+            )
         else:
             save_dict = {"pdb": "{}.pdb", "mmcif": "{}.cif"}
             base_url = "https://files.rcsb.org/download/"

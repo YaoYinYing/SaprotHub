@@ -1,5 +1,6 @@
 # import sys
 import os
+
 # current_file = os.path.abspath(__file__)
 # saprot_dir = os.path.dirname(current_file)
 # colabsaprot_dir = os.path.dirname(saprot_dir)
@@ -25,13 +26,16 @@ def run(config):
     trainer = load_trainer(config)
 
     # Record results
-    if config.setting.os_environ.NODE_RANK == 0 and config.setting.out_path is not None:
+    if (
+        config.setting.os_environ.NODE_RANK == 0
+        and config.setting.out_path is not None
+    ):
         out_path = config.setting.out_path
         out_dir = os.path.dirname(out_path)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
-        w = open(config.setting.out_path, 'w')
+        w = open(config.setting.out_path, "w")
         w.write("dataset\tspearman\n")
 
     # Save logs for ClinVar benchmark
@@ -42,26 +46,37 @@ def run(config):
         print(name)
         path = os.path.join(config.setting.dataset_dir, name)
         data_module.test_lmdb = path
-        
+
         if "ClinVar" in config.setting.dataset_dir:
-            result = trainer.test(model=model, datamodule=data_module, verbose=False)
+            result = trainer.test(
+                model=model, datamodule=data_module, verbose=False
+            )
         else:
             result = trainer.test(model=model, datamodule=data_module)
 
-        spearman = result[0]['spearman']
+        spearman = result[0]["spearman"]
 
-        if config.setting.os_environ.NODE_RANK == 0 and config.setting.out_path is not None:
+        if (
+            config.setting.os_environ.NODE_RANK == 0
+            and config.setting.out_path is not None
+        ):
             w.write(f"{name}\t{spearman:.4f}\n")
 
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', help="Running configurations", type=str, required=True)
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="Running configurations",
+        type=str,
+        required=True,
+    )
     return parser.parse_args()
 
 
 def main():
-    with open(args.config, 'r', encoding='utf-8') as r:
+    with open(args.config, "r", encoding="utf-8") as r:
         config = EasyDict(yaml.safe_load(r))
 
     if config.setting.seed:
@@ -73,6 +88,7 @@ def main():
             os.environ[k] = str(v)
 
     run(config)
+
 
 def my_zeroshot(config):
     # with open(args.config, 'r', encoding='utf-8') as r:
@@ -89,6 +105,6 @@ def my_zeroshot(config):
     run(config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     args = get_args()
     main()

@@ -1,5 +1,6 @@
 import sys
 import os
+
 current_file = os.path.abspath(__file__)
 saprot_dir = os.path.dirname(current_file)
 colabsaprot_dir = os.path.dirname(saprot_dir)
@@ -11,7 +12,6 @@ import argparse
 from easydict import EasyDict
 from utils.others import setup_seed
 from utils.module_loader import *
-
 
 
 ################################################################################
@@ -34,7 +34,7 @@ def finetune(config):
     ############################################################################
     model = my_load_model(config.model)
     if str(config.setting.seed):
-        config.dataset.seed= config.setting.seed
+        config.dataset.seed = config.setting.seed
     data_module = my_load_dataset(config.dataset)
     trainer = load_trainer(config)
 
@@ -45,10 +45,17 @@ def finetune(config):
     if model.save_path is not None:
         if config.model.kwargs.get("lora_kwargs", None):
             # Load LoRA model
-            if len(getattr(config.model.kwargs.lora_kwargs, "config_list", [])) <= 1:
+            if (
+                len(
+                    getattr(config.model.kwargs.lora_kwargs, "config_list", [])
+                )
+                <= 1
+            ):
                 config.model.kwargs.lora_kwargs.num_lora = 1
-                config.model.kwargs.lora_kwargs.config_list = [{"lora_config_path": model.save_path}]
-                
+                config.model.kwargs.lora_kwargs.config_list = [
+                    {"lora_config_path": model.save_path}
+                ]
+
             model = my_load_model(config.model)
 
         else:
@@ -56,14 +63,13 @@ def finetune(config):
 
         trainer.test(model=model, datamodule=data_module)
 
-
     ############################################################################
     # if config.setting.run_mode == 'test':
     #     if config.model.kwargs.get("use_lora", False):
     #         if config.model.kwargs.lora_config_path is not None:
     #             config.model.kwargs.lora_inference = True
     #     trainer.test(model=model, datamodule=data_module)
-    
+
 
 def run(config):
     # Initialize a model
@@ -88,10 +94,17 @@ def run(config):
     if model.save_path is not None:
         if config.model.kwargs.get("lora_kwargs", None):
             # Load LoRA model
-            if len(getattr(config.model.kwargs.lora_kwargs, "config_list", [])) <= 1:
+            if (
+                len(
+                    getattr(config.model.kwargs.lora_kwargs, "config_list", [])
+                )
+                <= 1
+            ):
                 config.model.kwargs.lora_kwargs.num_lora = 1
-                config.model.kwargs.lora_kwargs.config_list = [{"lora_config_path": model.save_path}]
-                
+                config.model.kwargs.lora_kwargs.config_list = [
+                    {"lora_config_path": model.save_path}
+                ]
+
             model = load_model(config.model)
 
         else:
@@ -102,12 +115,18 @@ def run(config):
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-c', '--config', help="running configurations", type=str, required=True)
+    parser.add_argument(
+        "-c",
+        "--config",
+        help="running configurations",
+        type=str,
+        required=True,
+    )
     return parser.parse_args()
 
 
 def main(args):
-    with open(args.config, 'r', encoding='utf-8') as r:
+    with open(args.config, "r", encoding="utf-8") as r:
         config = EasyDict(yaml.safe_load(r))
 
     if config.setting.seed:
@@ -129,9 +148,9 @@ def main(args):
     run(config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main(get_args())
     # with open(args.config, 'r', encoding='utf-8') as r:
     #     config = EasyDict(yaml.safe_load(r))
-    
+
     # finetune(config)

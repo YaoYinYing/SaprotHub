@@ -67,7 +67,6 @@ def inverse_folding(
     saprot_if_model = SaProtIFModel(**config)
     tokenizer = saprot_if_model.tokenizer
     device = saprot_if_model.device
-    
 
     ################################################################################
     ############################### Predict ########################################
@@ -82,10 +81,14 @@ def inverse_folding(
     save_path = os.path.join(save_dir, f"{save_name}.fasta")
 
     with open(save_path, "w") as w:
-        w.write(f">{parsed_seqs.name}_{parsed_seqs.chain}\n{parsed_seqs.amino_acid_seq}\n")
+        w.write(
+            f">{parsed_seqs.name}_{parsed_seqs.chain}\n{parsed_seqs.amino_acid_seq}\n"
+        )
         for i, aa_seq in enumerate(pred_aa_seqs):
             print(aa_seq)
-            w.write(f">>{parsed_seqs.name}_{parsed_seqs.chain}_pred_{i}\n{aa_seq}\n")
+            w.write(
+                f">>{parsed_seqs.name}_{parsed_seqs.chain}_pred_{i}\n{aa_seq}\n"
+            )
 
     new_mask = Mask(None)
     new_mask.from_masked(masked_aa_seq)
@@ -95,7 +98,6 @@ def inverse_folding(
 
 
 def main():
-
     pdb_path = "example/1ubq.cif"
     mask_string = "1-75"
     chain_id = "A"

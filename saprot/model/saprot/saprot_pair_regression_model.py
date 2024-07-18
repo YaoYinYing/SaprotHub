@@ -22,26 +22,34 @@ class SaprotPairRegressionModel(SaprotBaseModel):
 
         hidden_size = self.model.config.hidden_size * 2
         classifier = torch.nn.Sequential(
-            Linear(hidden_size, hidden_size),
-            ReLU(),
-            Linear(hidden_size, 1)
+            Linear(hidden_size, hidden_size), ReLU(), Linear(hidden_size, 1)
         )
 
         setattr(self.model, "classifier", classifier)
 
     def initialize_metrics(self, stage):
-        return {f"{stage}_loss": torchmetrics.MeanSquaredError(),
-                f"{stage}_spearman": torchmetrics.SpearmanCorrCoef(),
-                f"{stage}_R2": torchmetrics.R2Score(),
-                f"{stage}_pearson": torchmetrics.PearsonCorrCoef()}
+        return {
+            f"{stage}_loss": torchmetrics.MeanSquaredError(),
+            f"{stage}_spearman": torchmetrics.SpearmanCorrCoef(),
+            f"{stage}_R2": torchmetrics.R2Score(),
+            f"{stage}_pearson": torchmetrics.PearsonCorrCoef(),
+        }
 
     def forward(self, inputs_1, inputs_2):
         if self.freeze_backbone:
-            hidden_1 = torch.stack(self.get_hidden_states_from_dict(inputs_1, reduction="mean"))
-            hidden_2 = torch.stack(self.get_hidden_states_from_dict(inputs_2, reduction="mean"))
+            hidden_1 = torch.stack(
+                self.get_hidden_states_from_dict(inputs_1, reduction="mean")
+            )
+            hidden_2 = torch.stack(
+                self.get_hidden_states_from_dict(inputs_2, reduction="mean")
+            )
         else:
             # If "esm" is not in the model, use "bert" as the backbone
-            backbone = self.model.esm if hasattr(self.model, "esm") else self.model.bert
+            backbone = (
+                self.model.esm
+                if hasattr(self.model, "esm")
+                else self.model.bert
+            )
             hidden_1 = backbone(**inputs_1)[0][:, 0, :]
             hidden_2 = backbone(**inputs_2)[0][:, 0, :]
 
@@ -49,7 +57,7 @@ class SaprotPairRegressionModel(SaprotBaseModel):
         return self.model.classifier(hidden_concat).squeeze(dim=-1)
 
     def loss_func(self, stage, logits, labels):
-        fitness = labels['labels'].to(logits)
+        fitness = labels["labels"].to(logits)
         loss = torch.nn.functional.mse_loss(logits, fitness)
 
         # Update metrics
@@ -71,11 +79,11 @@ class SaprotPairRegressionModel(SaprotBaseModel):
 
         # if dist.get_rank() == 0:
         #     print(log_dict)
-        print('='*100)
-        print('Test Result:')
+        print("=" * 100)
+        print("Test Result:")
         for key, value in log_dict.items():
             print(f"{key}: {value.item()}")
-        print('='*100)
+        print("=" * 100)
         self.log_info(log_dict)
         self.reset_metrics("test")
 

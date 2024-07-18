@@ -11,10 +11,7 @@ from scipy.spatial.distance import pdist, squareform
 
 @register_dataset
 class SaprotContactDataset(LMDBDataset):
-    def __init__(self,
-                 tokenizer: str,
-                 max_length: int = 1024,
-                 **kwargs):
+    def __init__(self, tokenizer: str, max_length: int = 1024, **kwargs):
         """
         Args:
             tokenizer: Path to tokenizer
@@ -28,12 +25,12 @@ class SaprotContactDataset(LMDBDataset):
     def __getitem__(self, index):
         entry = json.loads(self._get(index))
 
-        seq = entry['seq']
-        tokens = self.tokenizer.tokenize(seq)[:self.max_length]
+        seq = entry["seq"]
+        tokens = self.tokenizer.tokenize(seq)[: self.max_length]
         seq = " ".join(tokens)
 
-        valid_mask = np.array(entry['valid_mask'])[:self.max_length]
-        coords = np.array(entry['tertiary'])[:self.max_length]
+        valid_mask = np.array(entry["valid_mask"])[: self.max_length]
+        coords = np.array(entry["tertiary"])[: self.max_length]
         contact_map = np.less(squareform(pdist(coords)), 8.0).astype(np.int64)
 
         y_inds, x_inds = np.indices(contact_map.shape)
@@ -49,7 +46,9 @@ class SaprotContactDataset(LMDBDataset):
     def collate_fn(self, batch):
         seqs, contact_maps, lengths = tuple(zip(*batch))
 
-        encoder_info = self.tokenizer.batch_encode_plus(seqs, return_tensors='pt', padding=True)
+        encoder_info = self.tokenizer.batch_encode_plus(
+            seqs, return_tensors="pt", padding=True
+        )
         inputs = {"inputs": encoder_info}
 
         contact_maps = pad_sequences(contact_maps, -1)

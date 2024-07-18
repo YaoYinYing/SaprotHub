@@ -24,14 +24,16 @@ class TimeCounter:
         print(f"\nFinished. The time is {t:.2f}s.\n", flush=True)
 
 
-def progress_bar(now: int, total: int, desc: str = '', end='\n'):
+def progress_bar(now: int, total: int, desc: str = "", end="\n"):
     length = 50
     now = now if now <= total else total
     num = now * length // total
-    progress_bar = '[' + '#' * num + '_' * (length - num) + ']'
-    display = f'{desc:<10} {progress_bar} {int(now/total*100):02d}% {now}/{total}'
+    progress_bar = "[" + "#" * num + "_" * (length - num) + "]"
+    display = (
+        f"{desc:<10} {progress_bar} {int(now/total*100):02d}% {now}/{total}"
+    )
 
-    print(f'\r\033[31m{display}\033[0m', end=end, flush=True)
+    print(f"\r\033[31m{display}\033[0m", end=end, flush=True)
 
 
 def setup_seed(seed):
@@ -51,8 +53,8 @@ def random_seed():
 
 
 def a3m_formalize(input, output, keep_gap=True):
-    with open(output, 'w') as w:
-        for record in SeqIO.parse(input, 'fasta'):
+    with open(output, "w") as w:
+        for record in SeqIO.parse(input, "fasta"):
             desc = record.description
             if keep_gap:
                 seq = re.sub(r"[a-z]", "", str(record.seq))
@@ -62,8 +64,10 @@ def a3m_formalize(input, output, keep_gap=True):
 
 
 def merge_file(file_list: list, save_path: str):
-    with open(save_path, 'w') as w:
+    with open(save_path, "w") as w:
         for i, file in enumerate(file_list):
-            with open(file, 'r') as r:
-                for line in tqdm(r, f"Merging {file}... ({i+1}/{len(file_list)})"):
+            with open(file, "r") as r:
+                for line in tqdm(
+                    r, f"Merging {file}... ({i+1}/{len(file_list)})"
+                ):
                     w.write(line)

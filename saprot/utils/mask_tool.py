@@ -1,11 +1,10 @@
-
 from typing import Union
 
 
 def shorter_range(
     input_list: Union[list[int], tuple[int]],
-    connector: str = '-',
-    seperator: str = '+',
+    connector: str = "-",
+    seperator: str = "+",
 ) -> str:
     """
     Shorten a list of integers by representing consecutive ranges with hyphens,
@@ -60,7 +59,7 @@ def shorter_range(
 
 
 def expand_range(
-    shortened_str: str, connector: str = '-', seperator: str = '+'
+    shortened_str: str, connector: str = "-", seperator: str = "+"
 ) -> list[int]:
     """
     Expand a shortened string expression representing a list of integers to the original list.
@@ -87,7 +86,7 @@ def expand_range(
     ranges = shortened_str.split(seperator)
 
     for rng in ranges:
-        if '-' in rng:
+        if "-" in rng:
             start, end = map(int, rng.split(connector))
             expanded_list.extend(range(start, end + 1))
         else:

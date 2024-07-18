@@ -13,9 +13,11 @@ def pdb2uniprot(pdb):
     Returns:
         A list contains all matched uniprot ids and corresponding chains
     """
-    response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot/{pdb}")
+    response = requests.get(
+        f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot/{pdb}"
+    )
     res = EasyDict(json.loads(response.text))
-    
+
     results = []
     keys = set()
     for uniprot, info in res[pdb].UniProt.items():
@@ -23,15 +25,17 @@ def pdb2uniprot(pdb):
             if chain.chain_id not in keys:
                 results.append((f"{pdb}_{chain.chain_id}", uniprot))
                 keys.add(chain.chain_id)
-    
+
     return results
 
 
 # Convert the pdb id with specific chain to the uniprot id
 def chain2uniprot(pdb, chain):
-    response = requests.get(f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot/{pdb}")
+    response = requests.get(
+        f"https://www.ebi.ac.uk/pdbe/api/mappings/uniprot/{pdb}"
+    )
     res = EasyDict(json.loads(response.text))
-    
+
     for uniprot, info in res[pdb].UniProt.items():
         for mappings in info.mappings:
             if mappings.chain_id == chain:

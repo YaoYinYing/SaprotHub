@@ -4,7 +4,10 @@ import warnings
 
 from saprot.utils.constants import DATA_TYPES_HINT, DATASET_TYPE2SEQ_TYPE
 
-class MiddlewareWarning(Warning): ...
+
+class MiddlewareWarning(Warning):
+    ...
+
 
 class Model(Protocol):
     training_data_type: Literal["AA", "SA"]
@@ -34,8 +37,14 @@ class SAFitter:
         # print(f"Using {self.model.training_data_type} as input sequence.")
         if self.model.training_data_type == "AA":
             return input.amino_acid_seq
-        
+
         if input._blind:
-            warnings.warn(MiddlewareWarning('Model is trained on Structural-Awared data, but input is blind, meaning that a full masked structure sequence is used.'))
-            warnings.filterwarnings("ignore", category=MiddlewareWarning) # ignore the warning once it's been shown
+            warnings.warn(
+                MiddlewareWarning(
+                    "Model is trained on Structural-Awared data, but input is blind, meaning that a full masked structure sequence is used."
+                )
+            )
+            warnings.filterwarnings(
+                "ignore", category=MiddlewareWarning
+            )  # ignore the warning once it's been shown
         return input.combined_sequence

@@ -67,8 +67,6 @@ class PretrainedModel:
             print(f"Using device: {self.device}")
         else:
             self.device = torch.device(self.device)
-        
-
 
     @property
     def weights_dir(self):
@@ -80,7 +78,6 @@ class PretrainedModel:
         Initializes the model by fetching and loading it from either a remote repository or a local directory.
         Validates the HuggingFace ID and directory paths, and downloads the model if necessary.
         """
-
 
         self.check_device()
 
@@ -102,7 +99,9 @@ class PretrainedModel:
             raise ValueError(f"Invalid HuggingFace ID: {self.huggingface_id}")
 
         if self.huggingface_id is None:
-            print("Hugging Face ID is set to None, searching for a local model.")
+            print(
+                "Hugging Face ID is set to None, searching for a local model."
+            )
             if not self.dir or not os.path.exists(self.dir):
                 raise FileNotFoundError(f"File {self.dir} does not exist")
             return
@@ -189,8 +188,12 @@ class PretrainedModel:
                 raise ValueError(
                     f"HuggingFace ID must be 'facebook' for ESMFold, received {self.huggingface_id}"
                 )
-            esmfoldtokenizer = AutoTokenizer.from_pretrained("facebook/esmfold_v1")
-            esmfold = EsmForProteinFolding.from_pretrained("facebook/esmfold_v1")
+            esmfoldtokenizer = AutoTokenizer.from_pretrained(
+                "facebook/esmfold_v1"
+            )
+            esmfold = EsmForProteinFolding.from_pretrained(
+                "facebook/esmfold_v1"
+            )
             esmfold.to(self.device)
             return esmfold, esmfoldtokenizer
 
@@ -201,8 +204,7 @@ class PretrainedModel:
 
 @dataclass
 class AdaptedModel(PretrainedModel):
-
-    task_type: ALL_TASKS_HINT=None
+    task_type: ALL_TASKS_HINT = None
 
     _lora_kwargs: dict = field(default_factory=dict)
     _config: EasyDict = None
@@ -216,7 +218,7 @@ class AdaptedModel(PretrainedModel):
             raise ValueError(
                 f"Task type {self.task_type} is not supported. Available tasks: {ALL_TASKS}"
             )
-        
+
         self.check_device()
 
         from saprot.config.config_dict import ConfigPreset
@@ -232,7 +234,6 @@ class AdaptedModel(PretrainedModel):
         self.config = copy.deepcopy(ConfigPreset().Default_config)
 
     def update_config(self):
-
         with open(self.adapter_path, "r") as f:
             adapter_config_dict = json.load(f)
 
@@ -311,22 +312,24 @@ class AdaptedModel(PretrainedModel):
 
         self.update_config()
 
-        #print(self.config)
+        # print(self.config)
         model = ModelDispatcher(
             task=self.task_type, config=self.config.model
         ).dispatch()
         model.to(self.device)
 
-        tokenizer = EsmTokenizer.from_pretrained(self.config.model.kwargs.config_path)
+        tokenizer = EsmTokenizer.from_pretrained(
+            self.config.model.kwargs.config_path
+        )
 
         return model, tokenizer
-    
+
     @property
-    def training_data_type(self) -> Literal['AA', 'SA']:
-        metadata_path = os.path.join(self.weights_dir,"metadata.json")
+    def training_data_type(self) -> Literal["AA", "SA"]:
+        metadata_path = os.path.join(self.weights_dir, "metadata.json")
         if os.path.exists(metadata_path):
-            with open(metadata_path, 'r') as f:
+            with open(metadata_path, "r") as f:
                 metadata = json.load(f)
-                return metadata['training_data_type']
+                return metadata["training_data_type"]
         else:
             return "SA"

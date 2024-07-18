@@ -104,7 +104,10 @@ def get_peft_config(config_dict: dict[str, Any]) -> PeftConfig:
 
 
 def get_peft_model(
-    model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "default", mixed: bool = False
+    model: PreTrainedModel,
+    peft_config: PeftConfig,
+    adapter_name: str = "default",
+    mixed: bool = False,
 ) -> PeftModel | PeftMixedModel:
     """
     Returns a Peft model object from a model and a config.
@@ -123,21 +126,32 @@ def get_peft_model(
     if hasattr(model_config, "to_dict"):
         model_config = model_config.to_dict()
 
-    peft_config.base_model_name_or_path = model.__dict__.get("name_or_path", None)
+    peft_config.base_model_name_or_path = model.__dict__.get(
+        "name_or_path", None
+    )
 
     if mixed:
         return PeftMixedModel(model, peft_config, adapter_name=adapter_name)
 
-    if peft_config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys() and not peft_config.is_prompt_learning:
+    if (
+        peft_config.task_type not in MODEL_TYPE_TO_PEFT_MODEL_MAPPING.keys()
+        and not peft_config.is_prompt_learning
+    ):
         return PeftModel(model, peft_config, adapter_name=adapter_name)
 
     if peft_config.is_prompt_learning:
-        peft_config = _prepare_prompt_learning_config(peft_config, model_config)
-    return MODEL_TYPE_TO_PEFT_MODEL_MAPPING[peft_config.task_type](model, peft_config, adapter_name=adapter_name)
+        peft_config = _prepare_prompt_learning_config(
+            peft_config, model_config
+        )
+    return MODEL_TYPE_TO_PEFT_MODEL_MAPPING[peft_config.task_type](
+        model, peft_config, adapter_name=adapter_name
+    )
 
 
 def inject_adapter_in_model(
-    peft_config: PeftConfig, model: torch.nn.Module, adapter_name: str = "default"
+    peft_config: PeftConfig,
+    model: torch.nn.Module,
+    adapter_name: str = "default",
 ) -> torch.nn.Module:
     r"""
     A simple API to create and inject adapter in-place into a model. Currently the API does not support prompt learning
@@ -153,7 +167,9 @@ def inject_adapter_in_model(
             The name of the adapter to be injected, if not provided, the default adapter name is used ("default").
     """
     if peft_config.is_prompt_learning or peft_config.is_adaption_prompt:
-        raise ValueError("`create_and_replace` does not support prompt learning and adaption prompt yet.")
+        raise ValueError(
+            "`create_and_replace` does not support prompt learning and adaption prompt yet."
+        )
 
     if peft_config.peft_type not in PEFT_TYPE_TO_TUNER_MAPPING.keys():
         raise ValueError(

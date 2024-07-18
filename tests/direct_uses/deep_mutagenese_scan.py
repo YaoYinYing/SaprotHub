@@ -10,7 +10,6 @@ from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.weights import PretrainedModel
 
 
-
 def get_model():
     model_loader = PretrainedModel(
         dir=os.path.abspath("./weights/SaProt/"),
@@ -32,12 +31,13 @@ def get_model():
     device = model.device
     model.eval()
 
-
     return model
 
 
 def run_dms(
-    model: SaprotFoldseekMutationModel, parsed_seqs: StructuralAwareSequences, chain_id: str
+    model: SaprotFoldseekMutationModel,
+    parsed_seqs: StructuralAwareSequences,
+    chain_id: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
     Run DMS on the mutant sequence.
@@ -54,21 +54,23 @@ def run_dms(
     print(f"Running DMS against chain {chain_id}")
 
     for resi, resn in track(tuple(enumerate(wt_seq.amino_acid_seq))):
-        #print(f"Running DMS on {resi+1}, {resn=}")
+        # print(f"Running DMS on {resi+1}, {resn=}")
 
-        mut_dict = model.predict_pos_mut(seq=wt_seq.combined_sequence, pos=resi+1)
-        #print(f'{mut_dict=}')
-        mut_dict_prob = model.predict_pos_prob(seq=wt_seq.combined_sequence, pos=resi+1)
-        #print(f'{mut_dict_prob=}')
+        mut_dict = model.predict_pos_mut(
+            seq=wt_seq.combined_sequence, pos=resi + 1
+        )
+        # print(f'{mut_dict=}')
+        mut_dict_prob = model.predict_pos_prob(
+            seq=wt_seq.combined_sequence, pos=resi + 1
+        )
+        # print(f'{mut_dict_prob=}')
         # sort this dict by PSSM_Alphabet
-        sorted_df_aa = {aa: mut_dict[f"{resn}{resi+1}{aa}"] for aa in PSSM_Alphabet}
-        sorted_df_aa_prob = {
-            aa: mut_dict_prob[aa] for aa in PSSM_Alphabet
+        sorted_df_aa = {
+            aa: mut_dict[f"{resn}{resi+1}{aa}"] for aa in PSSM_Alphabet
         }
+        sorted_df_aa_prob = {aa: mut_dict_prob[aa] for aa in PSSM_Alphabet}
         all_dict_aa.append(sorted_df_aa)
         all_dict_prob.append(sorted_df_aa_prob)
-
-
 
     df_aa_score = pd.DataFrame(all_dict_aa)
     df_aa_score_prob = pd.DataFrame(all_dict_prob)

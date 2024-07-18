@@ -38,4 +38,10 @@ TASK2DATASET: immutabledict[str, str] = immutabledict(
 
 # data_type_list
 ALL_TASKS: tuple[str] = tuple(TASK2MODEL.keys())
-ALL_TASKS_HINT= Literal['classification','token_classification','regression','pair_classification','pair_regression']
+ALL_TASKS_HINT = Literal[
+    "classification",
+    "token_classification",
+    "regression",
+    "pair_classification",
+    "pair_regression",
+]
