@@ -452,7 +452,7 @@ class FoldSeek:
             stdout, stderr = process.communicate()
             retcode = process.wait()
 
-            if retcode:
+            if retcode and not (result_exists:=os.path.exists(tmp_save_path)):
                 print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
@@ -463,6 +463,7 @@ class FoldSeek:
                     f"FoldSeek failed. \n"
                     f"Full Command:\n{cmd}\n"
                     f"return code: {retcode}\n"
+                    f"Results file: {result_exists}\n\n"
                     f"stdout:\n{stdout.decode('utf-8')}\n\n"
                     f"stderr:\n{stderr[:500_000].decode('utf-8')}\n"
                 )
