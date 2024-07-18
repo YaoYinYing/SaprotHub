@@ -457,11 +457,12 @@ class FoldSeek:
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())
-                        print("stderr end")
-                    raise RuntimeError(
-                        "FoldSeek failed\nstdout:\n%s\n\nstderr:\n%s\n"
-                        % (stdout.decode("utf-8"), stderr[:500_000].decode("utf-8"))
-                    )
+                print("stderr end")
+                
+                raise RuntimeError(
+                    "FoldSeek failed\nstdout:\n%s\n\nstderr:\n%s\n"
+                    % (stdout.decode("utf-8"), stderr[:500_000].decode("utf-8"))
+                )
                 
             ret=tuple(open(tmp_save_path, "r").read().strip().split("\n"))
 
