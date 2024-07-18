@@ -1,5 +1,6 @@
 import os
 
+import pandas as pd
 import torch
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup,FoldSeek
@@ -7,6 +8,18 @@ from saprot.utils.weights import AdaptedModel
 
 import torch.nn.functional as F
 
+subcellular_table = (
+    "Nucleus",
+    "Cytoplasm",
+    "Extracellular",
+    "Mitochondrion",
+    "Cell.membrane",
+    "Endoplasmic.reticulum",
+    "Plastid",
+    "Golgi.apparatus",
+    "Lysosome/Vacuole",
+    "Peroxisome",
+)
 
 foldseek = FoldSeekSetup(
     bin_dir="./bin",
@@ -33,7 +46,6 @@ def get_subcellular_model():
 
     seqs=dispatcher.parse_data("Multiple_SA_Sequences", 'upload_files/[EXAMPLE]Multiple_SA_Sequences.csv')
 
-
     model,tokenizer=weight_worker.load_model()
 
 
@@ -49,8 +61,10 @@ def get_subcellular_model():
     softmax_output_list = [F.softmax(output, dim=1).squeeze().tolist() for output in outputs_list]
 
     for index, output in enumerate(softmax_output_list):
-        print(f"For Sequence {index}, Prediction: Category {output.index(max(output))}, Probability: {output}")
-        
+        df=pd.DataFrame([output], columns=subcellular_table)
+        print(
+            f"For Sequence {index}, Prediction: Category {subcellular_table[output.index(max(output))]}, Probability: {df.to_dict()}"
+        )
 
 
 
