@@ -9,7 +9,6 @@ from Bio import pairwise2
 from Bio.PDB import PDBParser, FastMMCIFParser, Atom, Model, Structure, Chain, Residue
 from Bio.PDB.PDBIO import PDBIO
 from Bio.PDB.mmcifio import MMCIFIO
-from utils.mpr import MultipleProcessRunner
 
 
 mmcif_parser = FastMMCIFParser(QUIET=True)
@@ -471,46 +470,3 @@ def parse_structure(path, chains: list = None, CA_only: bool = False) -> dict:
     return parsed_dicts
 
     
-class ProteinStructureParser(MultipleProcessRunner):
-    def __init__(self, format, *args, **kwargs):
-        """
-        Parse protein files into coordinates and sequences using multiple processes.
-        Supported file formats: pdb, mmcif
-
-        Args:
-            data: List of files. Each element Should be a tuple of (pdb, chains) to have specific chain parsed.
-            path: Path to save the parsed data as jsonl file
-            n_process: Number of processes to use
-        """
-        super().__init__(*args, **kwargs)
-        self.format = format
-        assert self.format in ['pdb', 'mmcif'], "Only support pdb and mmcif format"
-    
-    def _aggregate(self, final_path: str, sub_paths):
-        with open(final_path, 'w') as w:
-            for sub_path in sub_paths:
-                with open(sub_path, 'r') as r:
-                    for line in tqdm(r, f"Aggregating parsed {self.format}s..."):
-                        w.write(line)
-                
-                os.remove(sub_path)
-    
-    def _target(self, process_id, data, sub_path, *args):
-        with open(sub_path, 'w') as f:
-            for i, (path, chains) in enumerate(data):
-                try:
-                    parsed_dicts = parse_structure(path, self.format, chains)
-                    for parsed_dict in parsed_dicts:
-                        parsed_str = json.dumps(parsed_dict)
-                        f.write(parsed_str + '\n')
-                    self.terminal_progress_bar(process_id,
-                                               i + 1,
-                                               len(data),
-                                               f"Process{process_id}: parsing {self.format}s...")
-                
-                except Exception as e:
-                    print(f"Error in {path}: {e} Skip it.")
-                    continue
-    
-    def __len__(self):
-        return len(self.data)

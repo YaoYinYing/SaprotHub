@@ -4,11 +4,10 @@ import pandas as pd
 import os
 
 import torch
-import subprocess
 
 from .data_transform import make_dist_map
 from tqdm import tqdm
-from utils.mpr import MultipleProcessRunner
+
 
 
 # Calculate TMscore between two structures. TMscore command tool is required to be installed.
@@ -93,38 +92,3 @@ def get_plddts(plddt_dir) -> pd.DataFrame:
 		}, ignore_index=True)
 	
 	return df
-
-
-# Extracting plddts using multiple processes
-class PlddtCalculator(MultipleProcessRunner):
-	def __init__(self, *args, **kwargs):
-		super().__init__(*args, **kwargs)
-	
-	def _target(self, process_id, data, sub_path, *args):
-		with open(sub_path, "w") as w:
-			w.write("name\tmean_plddt\n")
-			
-			for i, data_path in enumerate(data):
-				_, file = os.path.split(data_path)
-				name, _ = os.path.splitext(file)
-				mean_plddt = get_plddt(data_path)
-				
-				w.write(f"{name}\t{mean_plddt}\n")
-				
-				self.terminal_progress_bar(process_id, i+1, len(data), f"Process{process_id}: calculating plddt...")
-	
-	def __len__(self):
-		return len(self.data)
-	
-	def _aggregate(self, final_path: str, sub_paths):
-		with open(final_path, 'w') as w:
-			w.write("name\tmean_plddt\n")
-			
-			for sub_path in sub_paths:
-				with open(sub_path, 'r') as r:
-					# Skip header
-					r.readline()
-					for line in tqdm(r, f"Aggregating plddts..."):
-						w.write(line)
-				
-				os.remove(sub_path)
