@@ -22,7 +22,8 @@ peft = "0.10.0"
 bio = "1.6.2"
 wandb = "*"
 scipy = "*"
-pandas = "*"
+pandas = "<2.0.0"
+numpy = "<2.0.0"
 fair-esm = "*"
 matplotlib = "*"
 multiprocess = "*"
@@ -36,6 +37,8 @@ platformdirs = "*"
 
 immutabledict = "*"
 joblib = "*"
+
+rich = "*"
 
 [build-system]
 requires = ["poetry-core"]

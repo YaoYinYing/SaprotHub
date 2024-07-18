@@ -411,7 +411,6 @@ class FoldSeekSetup:
 @dataclass
 class FoldSeek:
     foldseek: str
-    chains: list = None
     nproc: int = os.cpu_count()
     plddt_mask: bool = False
     plddt_threshold: float = 70.0

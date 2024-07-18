@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 import torch
-
+from rich.progress import track
 from saprot.utils.foldseek_util import StructuralAwareSequences, FoldSeek
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
@@ -53,8 +53,8 @@ def run_dms(
 
     print(f"Running DMS against chain {chain_id}")
 
-    for resi, resn in enumerate(wt_seq.amino_acid_seq):
-        print(f"Running DMS on {resi+1}, {resn=}")
+    for resi, resn in track(tuple(enumerate(wt_seq.amino_acid_seq))):
+        #print(f"Running DMS on {resi+1}, {resn=}")
 
         mut_dict = model.predict_pos_mut(seq=wt_seq.combined_sequence, pos=resi+1)
         #print(f'{mut_dict=}')

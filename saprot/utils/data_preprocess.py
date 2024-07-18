@@ -130,8 +130,6 @@ class UniProtIDs:
 
 @dataclass
 class InputDataDispatcher:
-    data_type: DATA_TYPES_HINT
-    raw_data: Any
     DATASET_HOME: str
     LMDB_HOME: str
     STRUCTURE_HOME: str
@@ -166,7 +164,7 @@ class InputDataDispatcher:
 
             return (
                 StructuralAwareSequence(
-                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
                 ),
             )
 
@@ -175,7 +173,7 @@ class InputDataDispatcher:
             input_seq = raw_data
             sa_seq = input_seq
 
-            return (StructuralAwareSequence(None, None).from_SA_sequence(sa_seq),)
+            return (StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))
 
         # 2. Single UniProt ID
         if data_type == "Single_UniProt_ID":
@@ -211,7 +209,7 @@ class InputDataDispatcher:
             for index, aa_seq in protein_df["Sequence"].items():
                 SA.append(
                     StructuralAwareSequence(
-                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
                     )
                 )
 
@@ -224,7 +222,7 @@ class InputDataDispatcher:
             SA: List[StructuralAwareSequence] = []
 
             for index, sa_seq in protein_df["Sequence"].items():
-                SA.append(StructuralAwareSequence(None, None).from_SA_sequence(sa_seq))
+                SA.append(StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))
 
             return tuple(SA)
 
@@ -282,7 +280,7 @@ class InputDataDispatcher:
             return (StructuralAwareSequencePair(
                 *[
                     StructuralAwareSequence(
-                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq)
+                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
                     )
                     for aa_seq in raw_data
                 ]
@@ -293,7 +291,7 @@ class InputDataDispatcher:
 
             return (StructuralAwareSequencePair(
                 *[
-                    StructuralAwareSequence(None, None).from_SA_sequence(sa_seq)
+                    StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq)
                     for sa_seq in raw_data
                 ]
             ),)
@@ -473,7 +471,7 @@ class InputDataDispatcher:
             )
 
         af2_downloader = AlphaDBDownloader(
-            uniprot_ids, "pdb", save_dir=self.STRUCTURE_HOME, n_process=nprocess
+            uniprot_ids, "pdb", save_dir=self.STRUCTURE_HOME, nproc=nprocess
         )
         af2_downloader.run()
 
