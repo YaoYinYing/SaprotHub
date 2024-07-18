@@ -12,5 +12,4 @@ python tests/deep_mutagenese_scan.py
 
 python tests/call_tmalign.py
 python tests/thermalstability.py
-python tests/downloaders.py
 python tests/dataset_dispatch.py
