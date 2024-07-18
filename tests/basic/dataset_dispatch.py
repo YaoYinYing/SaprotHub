@@ -50,7 +50,11 @@ def test_multiple_paired_AA():
 def test_multiple_paired_PDB():
     print(dispatcher.parse_data("Multiple_pairs_of_PDB/CIF_Structures", 'upload_files/[EXAMPLE]Multiple_pairs_of_PDB_Structures.csv'))
 
+def test_multiple_aa_remote_csv():
+    print(dispatcher.parse_data("Multiple_AA_Sequences", 'https://raw.githubusercontent.com/westlake-repl/SaprotHub/main/upload_files/%5BEXAMPLE%5D%5BRegression%5DMultiple_AA_Sequences.csv'))
+
 def main():
+    test_multiple_aa_remote_csv()
     test_multiple_uniprot_ids()
     test_multiple_paired_PDB()
     test_multiple_paired_AA()

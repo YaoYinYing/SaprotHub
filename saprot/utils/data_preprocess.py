@@ -3,6 +3,8 @@ from pathlib import Path
 from typing import Any, Literal, Union
 import warnings
 import pandas as pd
+
+import pooch
 from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
 from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
 from string import ascii_uppercase, ascii_lowercase
@@ -78,9 +80,9 @@ class UniProtID:
             raise ValueError(
                 f"UniProt type must be either 'AF2' or 'PDB', got {self.uniprot_type}"
             )
-        
-        if self.uniprot_id.endswith('.pdb') or self.uniprot_id.endswith('.cif'):
-            self.uniprot_id=self.uniprot_id[:-4]
+
+        if self.uniprot_id.endswith(".pdb") or self.uniprot_id.endswith(".cif"):
+            self.uniprot_id = self.uniprot_id[:-4]
 
     @property
     def SA(self) -> StructuralAwareSequence:
@@ -142,16 +144,17 @@ class InputDataDispatcher:
     nproc: int = os.cpu_count()
 
     def __post_init__(self):
-        for dir in [self.STRUCTURE_HOME, self.DATASET_HOME,self.LMDB_HOME]:
-            os.makedirs(dir,exist_ok=True)
-
+        for dir in [self.STRUCTURE_HOME, self.DATASET_HOME, self.LMDB_HOME]:
+            os.makedirs(dir, exist_ok=True)
 
     def UniProtID2SA(
         self, proteins: Union[list[UniProtID], tuple[UniProtID], UniProtID]
     ) -> UniProtIDs:
         protein_list = UniProtIDs(proteins)
 
-        files= StructureDownloader(data_type='pdb', save_dir=self.STRUCTURE_HOME).run(payload=protein_list.uniprot_ids)
+        files = StructureDownloader(data_type="pdb", save_dir=self.STRUCTURE_HOME).run(
+            payload=protein_list.uniprot_ids
+        )
 
         foldseeq_runner = FoldSeek(
             self.FOLDSEEK_PATH,
@@ -168,11 +171,11 @@ class InputDataDispatcher:
     ) -> Union[tuple[StructuralAwareSequence], tuple[StructuralAwareSequencePair]]:
         if raw_data is None:
             raise ValueError("No data provided")
-        
+
         if data_type not in DATA_TYPES:
             raise ValueError(f"Invalid data type {data_type}")
-        
-        #print(f'Received data {data_type} {raw_data}')
+
+        # print(f'Received data {data_type} {raw_data}')
         # 0. Single AA Sequence
         if data_type == "Single_AA_Sequence":
             input_seq: str = raw_data
@@ -181,7 +184,9 @@ class InputDataDispatcher:
 
             return (
                 StructuralAwareSequence(
-                    amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
+                    amino_acid_seq=aa_seq,
+                    structural_seq="#" * len(aa_seq),
+                    skip_post_processing=True,
                 ),
             )
 
@@ -189,7 +194,9 @@ class InputDataDispatcher:
         if data_type == "Single_SA_Sequence":
             sa_seq = raw_data
 
-            return (StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))
+            return StructuralAwareSequence(
+                None, None, skip_post_processing=True
+            ).from_SA_sequence(sa_seq)
 
         # 2. Single UniProt ID
         if data_type == "Single_UniProt_ID":
@@ -212,10 +219,24 @@ class InputDataDispatcher:
         # Multiple sequences
         # raw_data = upload_files/xxx.csv
         if data_type.startswith("Multiple"):
-            uploaded_csv_path = raw_data
-            csv_dataset_path = os.path.join(self.DATASET_HOME,os.path.basename(uploaded_csv_path))
-            shutil.copy(uploaded_csv_path,csv_dataset_path)
-            
+            if not (raw_data.startswith("http://") or raw_data.startswith("https://")):
+                uploaded_csv_path = raw_data
+                csv_dataset_path = os.path.join(
+                    self.DATASET_HOME, os.path.basename(uploaded_csv_path)
+                )
+                shutil.copy(uploaded_csv_path, csv_dataset_path)
+            else:
+                csv_dataset_path = pooch.retrieve(
+                    url=raw_data,
+                    known_hash=None,
+                    path=self.DATASET_HOME,
+                    fname=(
+                        os.path.basename(raw_data)
+                        if raw_data.endswith(".csv")
+                        else None
+                    ),
+                    progressbar=True,
+                )
 
         # 4. Multiple AA Sequences
         if data_type == "Multiple_AA_Sequences":
@@ -226,7 +247,9 @@ class InputDataDispatcher:
             for index, aa_seq in protein_df["Sequence"].items():
                 SA.append(
                     StructuralAwareSequence(
-                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
+                        amino_acid_seq=aa_seq,
+                        structural_seq="#" * len(aa_seq),
+                        skip_post_processing=True,
                     )
                 )
 
@@ -239,7 +262,11 @@ class InputDataDispatcher:
             SA: list[StructuralAwareSequence] = []
 
             for index, sa_seq in protein_df["Sequence"].items():
-                SA.append(StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))
+                SA.append(
+                    StructuralAwareSequence(
+                        None, None, skip_post_processing=True
+                    ).from_SA_sequence(sa_seq)
+                )
 
             return tuple(SA)
 
@@ -286,35 +313,43 @@ class InputDataDispatcher:
                 repo_id=REPO_ID, repo_type="dataset", local_dir=self.LMDB_HOME / REPO_ID
             )
 
-            dataset_dir=self.LMDB_HOME / REPO_ID
-            csv_files=[x for x in os.listdir(dataset_dir) if x.endswith(".csv")]
+            dataset_dir = self.LMDB_HOME / REPO_ID
+            csv_files = [x for x in os.listdir(dataset_dir) if x.endswith(".csv")]
 
             for csv in csv_files:
                 raise NotImplementedError
 
-            return 
+            return
 
         # 9. Pair Single AA Sequences
         elif data_type == "A_pair_of_AA_Sequences":
 
-            return (StructuralAwareSequencePair(
-                *[
-                    StructuralAwareSequence(
-                        amino_acid_seq=aa_seq, structural_seq="#" * len(aa_seq),skip_post_processing=True
-                    )
-                    for aa_seq in raw_data
-                ]
-            ),)
+            return (
+                StructuralAwareSequencePair(
+                    *[
+                        StructuralAwareSequence(
+                            amino_acid_seq=aa_seq,
+                            structural_seq="#" * len(aa_seq),
+                            skip_post_processing=True,
+                        )
+                        for aa_seq in raw_data
+                    ]
+                ),
+            )
 
         # 10. Pair Single SA Sequences
         elif data_type == "A_pair_of_SA_Sequences":
 
-            return (StructuralAwareSequencePair(
-                *[
-                    StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq)
-                    for sa_seq in raw_data
-                ]
-            ),)
+            return (
+                StructuralAwareSequencePair(
+                    *[
+                        StructuralAwareSequence(
+                            None, None, skip_post_processing=True
+                        ).from_SA_sequence(sa_seq)
+                        for sa_seq in raw_data
+                    ]
+                ),
+            )
 
         # 11. Pair Single UniProt IDs
         elif data_type == "A_pair_of_UniProt_IDs":
