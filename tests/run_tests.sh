@@ -17,5 +17,9 @@ python tests/direct_uses/inverse_folding.py
 python tests/direct_uses/deep_mutagenese_scan.py
 
 # tasks
-python tests/tasks/regression-thermalstability.py
+python tests/tasks/regression-stability_aa.py
+python tests/tasks/regression-thermalstability_sa.py
+python tests/tasks/regression-thermalstability_sa_blind.py
 python tests/tasks/classification-subcellular.py
+
+python tests/tasks/pair_regression-similarity.py

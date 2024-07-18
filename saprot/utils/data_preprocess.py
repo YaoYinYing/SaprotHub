@@ -12,6 +12,7 @@ from string import ascii_uppercase, ascii_lowercase
 from immutabledict import immutabledict
 from dataclasses import dataclass
 
+from saprot.utils.constants import DATA_TYPES, DATA_TYPES_HINT
 from saprot.utils.downloader import StructureDownloader
 from saprot.utils.foldseek_util import (
     StructuralAwareSequence,
@@ -24,47 +25,6 @@ import shutil
 
 
 from huggingface_hub import snapshot_download
-
-
-DATA_TYPES: tuple = (
-    "Single_AA_Sequence",
-    "Single_SA_Sequence",
-    "Single_UniProt_ID",
-    "Single_PDB/CIF_Structure",
-    "Multiple_AA_Sequences",
-    "Multiple_SA_Sequences",
-    "Multiple_UniProt_IDs",
-    "Multiple_PDB/CIF_Structures",
-    "SaprotHub_Dataset",
-    "A_pair_of_AA_Sequences",
-    "A_pair_of_SA_Sequences",
-    "A_pair_of_UniProt_IDs",
-    "A_pair_of_PDB/CIF_Structures",
-    "Multiple_pairs_of_AA_Sequences",
-    "Multiple_pairs_of_SA_Sequences",
-    "Multiple_pairs_of_UniProt_IDs",
-    "Multiple_pairs_of_PDB/CIF_Structures",
-)
-
-DATA_TYPES_HINT = Literal[
-    "Single_AA_Sequence",
-    "Single_SA_Sequence",
-    "Single_UniProt_ID",
-    "Single_PDB/CIF_Structure",
-    "Multiple_AA_Sequences",
-    "Multiple_SA_Sequences",
-    "Multiple_UniProt_IDs",
-    "Multiple_PDB/CIF_Structures",
-    "SaprotHub_Dataset",
-    "A_pair_of_AA_Sequences",
-    "A_pair_of_SA_Sequences",
-    "A_pair_of_UniProt_IDs",
-    "A_pair_of_PDB/CIF_Structures",
-    "Multiple_pairs_of_AA_Sequences",
-    "Multiple_pairs_of_SA_Sequences",
-    "Multiple_pairs_of_UniProt_IDs",
-    "Multiple_pairs_of_PDB/CIF_Structures",
-]
 
 
 @dataclass
@@ -313,7 +273,7 @@ class InputDataDispatcher:
                 repo_id=REPO_ID, repo_type="dataset", local_dir=self.LMDB_HOME / REPO_ID
             )
 
-            dataset_dir = self.LMDB_HOME / REPO_ID
+            dataset_dir = os.path.join(self.LMDB_HOME, REPO_ID)
             csv_files = [x for x in os.listdir(dataset_dir) if x.endswith(".csv")]
 
             for csv in csv_files:
@@ -323,6 +283,16 @@ class InputDataDispatcher:
 
         # 9. Pair Single AA Sequences
         elif data_type == "A_pair_of_AA_Sequences":
+            if isinstance(raw_data, str):
+                if not "," in raw_data:
+                    raise ValueError(
+                        "The raw data should be a comma separated string of two amino acid sequences if it is a string"
+                    )
+                raw_data = raw_data.split(",")
+            if not (isinstance(raw_data, (list, tuple)) and len(raw_data) == 2):
+                raise ValueError(
+                    "The raw data should be a list/tuple of two amino acid sequences if it is a list/tuple"
+                )
 
             return (
                 StructuralAwareSequencePair(

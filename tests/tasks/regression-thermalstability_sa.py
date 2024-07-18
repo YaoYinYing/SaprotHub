@@ -1,8 +1,24 @@
 import os
 
 import torch
+from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup,FoldSeek
 from saprot.utils.weights import AdaptedModel
+from saprot.utils.middleware import SAFitter
+
+foldseek = FoldSeekSetup(
+    bin_dir="./bin",
+    base_url="https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/",
+).foldseek
+
+dispatcher=InputDataDispatcher(
+    DATASET_HOME="output/tasks/regression/dataset",
+    LMDB_HOME="output/tasks/regression/lmdb",
+    STRUCTURE_HOME="output/tasks/regression/structures/",
+    FOLDSEEK_PATH=foldseek,
+    nproc=20,
+)
+
 
 def get_thermol_model():
     weight_worker = AdaptedModel(
@@ -13,25 +29,20 @@ def get_thermol_model():
         num_of_categories=10
     )
 
-    # weight_worker.device=torch.device('cpu')
+    fitter=SAFitter(
+        model=weight_worker,
+        dataset_source="Multiple_SA_Sequences"
+    )
 
-    foldseek = FoldSeekSetup(
-        bin_dir="./bin",
-        base_url="https://github.com/steineggerlab/foldseek/releases/download/9-427df8a/",
-    ).foldseek
-
-    pdb_dir='example/tmalign/inverse_folding_refold'
 
     model,tokenizer=weight_worker.load_model()
 
-    pdbs=[i for i in os.listdir(pdb_dir) if i.endswith('.pdb')]
-
-    seqs=[FoldSeek(foldseek, plddt_mask=False).query(os.path.join(pdb_dir,pdb))['A'] for pdb in pdbs]
+    seqs=dispatcher.parse_data("Multiple_SA_Sequences", 'upload_files/[EXAMPLE]Multiple_SA_Sequences.csv')
 
     outputs_list=[]
 
     for i, s in enumerate(seqs):
-        inputs = tokenizer(s.combined_sequence, return_tensors="pt")
+        inputs = tokenizer(fitter(s), return_tensors="pt")
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad(): 
             outputs = model(inputs)

@@ -4,7 +4,6 @@ import pandas as pd
 import torch
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup,FoldSeek
-from saprot.utils.middleware import SAFitter
 from saprot.utils.weights import AdaptedModel
 
 import torch.nn.functional as F
@@ -28,9 +27,9 @@ foldseek = FoldSeekSetup(
 ).foldseek
 
 dispatcher=InputDataDispatcher(
-    DATASET_HOME="output/tasks/classification/dataset",
-    LMDB_HOME="output/tasks/classification/lmdb",
-    STRUCTURE_HOME="output/tasks/classification/structures/",
+    DATASET_HOME="output/tasks/token_classification/dataset",
+    LMDB_HOME="output/tasks/token_classification/lmdb",
+    STRUCTURE_HOME="output/tasks/token_classification/structures/",
     FOLDSEEK_PATH=foldseek,
     nproc=20,
 )
@@ -40,25 +39,20 @@ def get_subcellular_model():
     weight_worker = AdaptedModel(
         dir="./weights/SaProt/",
         huggingface_id="SaProtHub",
-        model_name="Model-Subcellular_Localization-650M",
-        task_type="classification",
+        model_name="Model-Binding_Site_Detection-650M",
+        task_type="token_classification",
         num_of_categories=10
     )
 
-    seqs=dispatcher.parse_data("Multiple_SA_Sequences", 'upload_files/[EXAMPLE]Multiple_SA_Sequences.csv')
+    seqs=dispatcher.parse_data("Multiple_AA_Sequences", 'https://raw.githubusercontent.com/westlake-repl/SaprotHub/main/upload_files/%5BEXAMPLE%5D%5BAminoAcidClassification-3Categories%5DMultiple_AA_Sequences.csv')
 
     model,tokenizer=weight_worker.load_model()
-
-    fitter=SAFitter(
-        model=weight_worker,
-        dataset_source="Multiple_SA_Sequences"
-    )
 
 
     outputs_list=[]
 
     for i, s in enumerate(seqs):
-        inputs = tokenizer(fitter(s), return_tensors="pt")
+        inputs = tokenizer(s.amino_acid_seq, return_tensors="pt")
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad(): 
             outputs = model(inputs)
@@ -66,13 +60,12 @@ def get_subcellular_model():
 
     softmax_output_list = [F.softmax(output, dim=1).squeeze().tolist() for output in outputs_list]
 
-    for index, output in enumerate(softmax_output_list):
-        df=pd.DataFrame([output], columns=subcellular_table)
-        print(
-            f"For Sequence {index}, Prediction: Category {subcellular_table[output.index(max(output))]}, Probability: {df.to_dict()}"
-        )
-
-
+    print("The probability of each category:")
+    for seq_index, seq in enumerate(softmax_output_list):
+        seq_prob_df = pd.DataFrame(seq)
+        print('='*100)
+        print(f'Sequence {seq_index + 1}:')
+        print(seq_prob_df[1:-1].to_string())
 
 
 

@@ -169,7 +169,11 @@ class StructuralAwareSequence:
 
         if self.name.endswith(".cif") or self.name.endswith(".pdb"):
             self.name = self.name[:-4]
-
+    @property
+    def _blind(self):
+        return self.structural_seq.strip('#') == '' 
+    
+    
     def from_SA_sequence(self, SA_sequence: str):
         seq_len = len(SA_sequence)
         if not (seq_len > 0 and seq_len % 2 == 0):
@@ -182,6 +186,7 @@ class StructuralAwareSequence:
         self.structural_seq = SA_sequence[st_seq_islice]
 
         return self
+    
 
     @property
     def combined_sequence(self) -> str:
@@ -198,6 +203,7 @@ class StructuralAwareSequence:
             )
         )
         return combined_sequence
+    
 
     def masked_seq(self, mask: "Mask") -> str:
         """

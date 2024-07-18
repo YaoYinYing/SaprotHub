@@ -2,8 +2,6 @@ from typing import Literal
 from immutabledict import immutabledict
 
 
-
-
 # task_type_dict, reversed
 TASK_TYPE: immutabledict[str, str] = immutabledict(
     {
@@ -34,29 +32,6 @@ TASK2DATASET: immutabledict[str, str] = immutabledict(
         "regression": "saprot/saprot_regression_dataset",
         "pair_classification": "saprot/saprot_pair_classification_dataset",
         "pair_regression": "saprot/saprot_pair_regression_dataset",
-    }
-)
-
-# training_data_type_dict
-TRAINING_SEQUENCE_TYPE_MAPPING: immutabledict[str, str] = immutabledict(
-    {
-        "Single AA Sequence": "AA",
-        "Single SA Sequence": "SA",
-        "Single UniProt ID": "SA",
-        "Single PDB/CIF Structure": "SA",
-        "Multiple AA Sequences": "AA",
-        "Multiple SA Sequences": "SA",
-        "Multiple UniProt IDs": "SA",
-        "Multiple PDB/CIF Structures": "SA",
-        "SaprotHub Dataset": "SA",
-        "A pair of AA Sequences": "AA",
-        "A pair of SA Sequences": "SA",
-        "A pair of UniProt IDs": "SA",
-        "A pair of PDB/CIF Structures": "SA",
-        "Multiple pairs of AA Sequences": "AA",
-        "Multiple pairs of SA Sequences": "SA",
-        "Multiple pairs of UniProt IDs": "SA",
-        "Multiple pairs of PDB/CIF Structures": "SA",
     }
 )
 

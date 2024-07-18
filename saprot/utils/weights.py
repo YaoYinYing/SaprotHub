@@ -1,8 +1,7 @@
 import copy
 import json
 import os
-from pathlib import Path
-from typing import Literal, Union
+from typing import Literal
 from dataclasses import dataclass, field
 import warnings
 
@@ -321,3 +320,13 @@ class AdaptedModel(PretrainedModel):
         tokenizer = EsmTokenizer.from_pretrained(self.config.model.kwargs.config_path)
 
         return model, tokenizer
+    
+    @property
+    def training_data_type(self) -> Literal['AA', 'SA']:
+        metadata_path = os.path.join(self.weights_dir,"metadata.json")
+        if os.path.exists(metadata_path):
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+                return metadata['training_data_type']
+        else:
+            return "SA"
