@@ -3,7 +3,7 @@ import subprocess
 import requests
 import platform
 import subprocess
-from typing import Optional, Tuple
+from typing import Optional
 
 class TMalignSetup:
     """

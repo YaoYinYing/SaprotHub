@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, List, Literal, Tuple, Union
+from typing import Any, Literal, Union
 import warnings
 import pandas as pd
 from transformers.models.esm.openfold_utils.protein import to_pdb, Protein as OFProtein
@@ -103,21 +103,21 @@ class StructuralAwareSequencePair:
 
 @dataclass
 class UniProtIDs:
-    uniprot_ids: Union[Tuple[UniProtID]]
+    uniprot_ids: Union[tuple[UniProtID]]
 
     def __post_init__(self):
         if isinstance(self.uniprot_ids, UniProtID):
             self.uniprot_ids = [self.uniprot_ids]
 
     @property
-    def all_labels(self) -> Tuple[str]:
+    def all_labels(self) -> tuple[str]:
         return tuple(uniprot.uniprot_id for uniprot in self.uniprot_ids)
 
     @property
     def is_AF2_structures(self) -> bool:
         return all(x.uniprot_type == "AF2" for x in self.uniprot_ids)
 
-    def map_sa_to_uniprot_ids(self, sa_seqs: Tuple[StructuralAwareSequences]):
+    def map_sa_to_uniprot_ids(self, sa_seqs: tuple[StructuralAwareSequences]):
 
         if not len(sa_seqs) == len(self.uniprot_ids):
             raise ValueError(
@@ -129,7 +129,7 @@ class UniProtIDs:
         return
 
     @property
-    def SA_seqs_as_tuple(self) -> Tuple[StructuralAwareSequence]:
+    def SA_seqs_as_tuple(self) -> tuple[StructuralAwareSequence]:
         return tuple(x.SA for x in self.uniprot_ids)
 
 
@@ -147,7 +147,7 @@ class InputDataDispatcher:
 
 
     def UniProtID2SA(
-        self, proteins: Union[List[UniProtID], Tuple[UniProtID], UniProtID]
+        self, proteins: Union[list[UniProtID], tuple[UniProtID], UniProtID]
     ) -> UniProtIDs:
         protein_list = UniProtIDs(proteins)
 
@@ -164,8 +164,8 @@ class InputDataDispatcher:
         return protein_list
 
     def parse_data(
-        self, data_type: DATA_TYPES_HINT, raw_data: Union[str, Tuple, List]
-    ) -> Union[Tuple[StructuralAwareSequence], Tuple[StructuralAwareSequencePair]]:
+        self, data_type: DATA_TYPES_HINT, raw_data: Union[str, tuple, list]
+    ) -> Union[tuple[StructuralAwareSequence], tuple[StructuralAwareSequencePair]]:
         if raw_data is None:
             raise ValueError("No data provided")
         
@@ -221,7 +221,7 @@ class InputDataDispatcher:
         if data_type == "Multiple_AA_Sequences":
             protein_df = pd.read_csv(csv_dataset_path)
 
-            SA: List[StructuralAwareSequence] = []
+            SA: list[StructuralAwareSequence] = []
 
             for index, aa_seq in protein_df["Sequence"].items():
                 SA.append(
@@ -236,7 +236,7 @@ class InputDataDispatcher:
         if data_type == "Multiple_SA_Sequences":
             protein_df = pd.read_csv(csv_dataset_path)
 
-            SA: List[StructuralAwareSequence] = []
+            SA: list[StructuralAwareSequence] = []
 
             for index, sa_seq in protein_df["Sequence"].items():
                 SA.append(StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))

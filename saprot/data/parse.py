@@ -4,7 +4,6 @@ import copy
 import numpy as np
 
 
-from tqdm import tqdm
 from Bio import pairwise2
 from Bio.PDB import PDBParser, FastMMCIFParser, Atom, Model, Structure, Chain, Residue
 from Bio.PDB.PDBIO import PDBIO

@@ -1,9 +1,9 @@
 
-from typing import List, Tuple, Union
+from typing import Union
 
 
 def shorter_range(
-    input_list: Union[List[int], Tuple[int]],
+    input_list: Union[list[int], tuple[int]],
     connector: str = '-',
     seperator: str = '+',
 ) -> str:

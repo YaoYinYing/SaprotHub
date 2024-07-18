@@ -1,7 +1,6 @@
 import torch
 import os
 
-from typing import List, Dict
 from data.pdb2feature import batch_coords2feature
 from transformers import (
     AutoConfig,
@@ -326,7 +325,7 @@ class SaprotBaseModel(AbstractModel):
         
         return repr_list
     
-    def add_bias_feature(self, inputs, coords: List[Dict]) -> torch.Tensor:
+    def add_bias_feature(self, inputs, coords: list[dict]) -> torch.Tensor:
         """
         Add structure information as biases to attention map. This function is used to add structure information
         to the model as Evoformer does.

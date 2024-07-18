@@ -5,9 +5,7 @@ import platform
 import shutil
 import subprocess
 import tarfile
-import time
-import json
-from typing import Any, List, Literal, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Literal, Optional, Union
 import numpy as np
 import re
 import pooch
@@ -15,6 +13,7 @@ import platformdirs
 import tempfile
 import subprocess
 from joblib import Parallel, delayed
+from rich.progress import track
 
 from saprot.utils.mask_tool import shorter_range
 
@@ -154,10 +153,10 @@ class StructuralAwareSequence:
 
         if self.skip_post_processing:
             return
-        
+
         if self.amino_acid_seq is None and self.structural_seq is None:
             return
-        
+
         self.amino_acid_seq = self.amino_acid_seq.strip()
         self.structural_seq = self.structural_seq.strip().lower()
         self.name_chain = self.desc.split(" ")[0]
@@ -244,9 +243,8 @@ class StructuralAwareSequences:
 
     foldseek_results: tuple[str] = None
 
-
     def __str__(self):
-        return f'Source structure: {self.source_structure}\nSequences: {self.seqs}'
+        return f"Source structure: {self.source_structure}\nSequences: {self.seqs}"
 
     def filtered(self, chains: tuple[str]) -> "StructuralAwareSequences":
         """
@@ -420,10 +418,12 @@ class FoldSeek:
         if not os.path.exists(self.foldseek):
             raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
 
-    def query(self, pdb_file: str, chain_ids: tuple[str] = None) -> StructuralAwareSequences:
+    def query(
+        self, pdb_file: str, chain_ids: tuple[str] = None
+    ) -> StructuralAwareSequences:
         if pdb_file is None or not os.path.exists(pdb_file):
             raise FileNotFoundError(f"PDB file not found: {pdb_file}")
-        
+
         self.name = os.path.basename(pdb_file)
         if self.plddt_mask:
             plddts = extract_plddt(pdb_file)
@@ -452,13 +452,13 @@ class FoldSeek:
             stdout, stderr = process.communicate()
             retcode = process.wait()
 
-            if retcode and not (result_exists:=os.path.exists(tmp_save_path)):
+            if retcode and not (result_exists := os.path.exists(tmp_save_path)):
                 print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())
                 print("stderr end")
-                
+
                 raise RuntimeError(
                     f"FoldSeek failed. \n"
                     f"Full Command:\n{cmd}\n"
@@ -467,8 +467,8 @@ class FoldSeek:
                     f"stdout:\n{stdout.decode('utf-8')}\n\n"
                     f"stderr:\n{stderr[:500_000].decode('utf-8')}\n"
                 )
-                
-            ret=tuple(open(tmp_save_path, "r").read().strip().split("\n"))
+
+            ret = tuple(open(tmp_save_path, "r").read().strip().split("\n"))
 
         seq_dict = StructuralAwareSequences(
             source_structure=pdb_file,
@@ -476,7 +476,6 @@ class FoldSeek:
             foldseek_results=ret,
         )
 
-            
         for i, line in enumerate(seq_dict.foldseek_results):
             desc, seq, struc_seq = line.split("\t")[:3]
 
@@ -502,75 +501,14 @@ class FoldSeek:
         )
 
     def parallel_queries(
-        self, pdb_files: Union[Tuple, List]
-    ) -> Tuple[StructuralAwareSequences]:
+        self, pdb_files: Union[tuple, list]
+    ) -> tuple[StructuralAwareSequences]:
         return tuple(
             Parallel(n_jobs=self.nproc)(
-                delayed(self.query)(pdb_file) for pdb_file in pdb_files
+                delayed(self.query)(pdb_file)
+                for pdb_file in track(pdb_files, description="FoldSeeking...")
             )
         )
-
-
-# Get structural seqs from pdb file
-def get_struc_seq(
-    foldseek,
-    path,
-    chains: list = None,
-    process_id: int = 0,
-    plddt_mask: bool = False,
-    plddt_threshold: float = 70.0,
-) -> StructuralAwareSequences:
-    """
-
-    Args:
-        foldseek: Binary executable file of foldseek
-        path: Path to pdb file
-        chains: Chains to be extracted from pdb file. If None, all chains will be extracted.
-        process_id: Process ID for temporary files. This is used for parallel processing.
-        plddt_mask: If True, mask regions with plddt < plddt_threshold. plddt scores are from the pdb file.
-        plddt_threshold: Threshold for plddt. If plddt is lower than this value, the structure will be masked.
-
-    Returns:
-        seq_dict: A dict of structural seqs. The keys are chain IDs. The values are tuples of
-        (seq, struc_seq, combined_seq).
-    """
-
-    tmp_save_path = f"get_struc_seq_{process_id}_{time.time()}.tsv"
-    cmd = f"{foldseek} structureto3didescriptor -v 0 --threads 1 --chain-name-mode 1 {path} {tmp_save_path}"
-    os.system(cmd)
-
-    name = os.path.basename(path)
-    seq_dict = StructuralAwareSequences(source_structure=path, seqs={})
-    with open(tmp_save_path, "r") as r:
-        for i, line in enumerate(r):
-            desc, seq, struc_seq = line.split("\t")[:3]
-
-            new_seq = StructuralAwareSequence(
-                amino_acid_seq=seq, structural_seq=struc_seq, desc=desc, name=name
-            )
-
-            # Mask low plddt
-            if plddt_mask:
-                plddts = extract_plddt(path)
-                assert len(plddts) == len(
-                    struc_seq
-                ), f"Length mismatch: {len(plddts)} != {len(struc_seq)}"
-
-                # Mask regions with plddt < threshold
-                indices = np.where(plddts < plddt_threshold)[0]
-                np_seq = np.array(list(new_seq.structural_seq))
-                np_seq[indices] = "#"
-                new_seq.structural_seq = "".join(np_seq)
-
-            seq_dict.seqs.update({new_seq.chain: new_seq})
-
-    os.remove(tmp_save_path)
-    os.remove(tmp_save_path + ".dbtype")
-    return (
-        seq_dict
-        if chains is not None or len(chains) == 0
-        else seq_dict.filtered(chains=tuple(chains))
-    )
 
 
 # TODO: multple chain?
@@ -608,14 +546,3 @@ def extract_plddt(pdb_path: str) -> np.ndarray:
 
     plddts = np.array([np.mean(v) for v in plddt_dict.values()])
     return plddts
-
-
-if __name__ == "__main__":
-    foldseek = "/sujin/bin/foldseek"
-    # test_path = "/sujin/Datasets/PDB/all/6xtd.cif"
-    test_path = "/sujin/Datasets/FLIP/meltome/af2_structures/A0A061ACX4.pdb"
-    plddt_path = "/sujin/Datasets/FLIP/meltome/af2_plddts/A0A061ACX4.json"
-    res = get_struc_seq(
-        foldseek, test_path, plddt_path=plddt_path, plddt_threshold=70.0
-    )
-    print(res["A"][1].lower())
