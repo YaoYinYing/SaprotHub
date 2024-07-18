@@ -10,13 +10,15 @@ from string import ascii_uppercase, ascii_lowercase
 from immutabledict import immutabledict
 from dataclasses import dataclass
 
-from saprot.utils.downloader import AlphaDBDownloader, StructureDownloader
+from saprot.utils.downloader import StructureDownloader
 from saprot.utils.foldseek_util import (
     StructuralAwareSequence,
     StructuralAwareSequences,
     Mask,
     FoldSeek,
 )
+
+import shutil
 
 
 from huggingface_hub import snapshot_download
@@ -76,6 +78,9 @@ class UniProtID:
             raise ValueError(
                 f"UniProt type must be either 'AF2' or 'PDB', got {self.uniprot_type}"
             )
+        
+        if self.uniprot_id.endswith('.pdb') or self.uniprot_id.endswith('.cif'):
+            self.uniprot_id=self.uniprot_id[:-4]
 
     @property
     def SA(self) -> StructuralAwareSequence:
@@ -136,6 +141,11 @@ class InputDataDispatcher:
     FOLDSEEK_PATH: str
     nproc: int = os.cpu_count()
 
+    def __post_init__(self):
+        for dir in [self.STRUCTURE_HOME, self.DATASET_HOME,self.LMDB_HOME]:
+            os.makedirs(dir,exist_ok=True)
+
+
     def UniProtID2SA(
         self, proteins: Union[List[UniProtID], Tuple[UniProtID], UniProtID]
     ) -> UniProtIDs:
@@ -158,6 +168,9 @@ class InputDataDispatcher:
     ) -> Union[Tuple[StructuralAwareSequence], Tuple[StructuralAwareSequencePair]]:
         if raw_data is None:
             raise ValueError("No data provided")
+        
+        if data_type not in DATA_TYPES:
+            raise ValueError(f"Invalid data type {data_type}")
         
         #print(f'Received data {data_type} {raw_data}')
         # 0. Single AA Sequence
@@ -200,7 +213,9 @@ class InputDataDispatcher:
         # raw_data = upload_files/xxx.csv
         if data_type.startswith("Multiple"):
             uploaded_csv_path = raw_data
-            csv_dataset_path = self.DATASET_HOME / uploaded_csv_path
+            csv_dataset_path = os.path.join(self.DATASET_HOME,os.path.basename(uploaded_csv_path))
+            shutil.copy(uploaded_csv_path,csv_dataset_path)
+            
 
         # 4. Multiple AA Sequences
         if data_type == "Multiple_AA_Sequences":
@@ -247,12 +262,15 @@ class InputDataDispatcher:
             type_col = protein_df["type"].to_list()
             chain_col = protein_df["chain"].to_list()
 
+            print(protein_df)
+
             protein_list = self.UniProtID2SA(
                 [
                     UniProtID(_id, _type, _chain)
                     for _id, _type, _chain in zip(id_col, type_col, chain_col)
                 ]
             )
+            print(protein_list)
 
             return protein_list.SA_seqs_as_tuple
 
@@ -451,41 +469,6 @@ class InputDataDispatcher:
                     protein_pair[0].SA_seqs_as_tuple, protein_pair[1].SA_seqs_as_tuple
                 )
             )
-
-    ################################################################################
-    ########################## Download predicted structures #######################
-    ################################################################################
-    def uniprot2pdb(self, uniprot_ids, nprocess=20) -> Tuple[str]:
-        from saprot.utils.downloader import AlphaDBDownloader
-
-        os.makedirs(self.STRUCTURE_HOME, exist_ok=True)
-        # check exists files
-        exists_file = set(
-            [
-                x
-                for x in os.listdir(self.STRUCTURE_HOME)
-                if x.endswith(".pdb") or x.endswith(".cif")
-            ]
-        )
-        if exists_file:
-            warnings.warn(
-                f"{len(exists_file)} files already exists in {self.STRUCTURE_HOME}"
-            )
-
-        af2_downloader = AlphaDBDownloader(
-            uniprot_ids, "pdb", save_dir=self.STRUCTURE_HOME, nproc=nprocess
-        )
-        af2_downloader.run()
-
-        updated_files = set(
-            [
-                x
-                for x in os.listdir(self.STRUCTURE_HOME)
-                if x.endswith(".pdb") or x.endswith(".cif")
-            ]
-        )
-
-        return Tuple(updated_files.difference(exists_file))
 
 
 alphabet_list = list(ascii_uppercase + ascii_lowercase)
