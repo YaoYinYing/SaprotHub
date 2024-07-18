@@ -3,7 +3,6 @@ import os
 import torch
 from saprot.utils.foldseek_util import FoldSeekSetup,FoldSeek
 from saprot.utils.weights import AdaptedModel
-from deep_mutagenese_scan import run_dms
 
 def get_thermol_model():
     weight_worker = AdaptedModel(
@@ -38,14 +37,11 @@ def get_thermol_model():
             outputs = model(inputs)
         outputs_list.append(outputs)
 
-    scores= [output.cpu().item() for output in outputs_list]
 
     outputs= [output.squeeze().tolist() for output in outputs_list]
 
-    print(outputs_list)
-    print(f'{scores=}')
-    print(f'{outputs=}')
-
+    for index, output in enumerate(outputs_list):
+        print(f"For Sequence {index}, Prediction: Value {output.item()}")
 
 
 

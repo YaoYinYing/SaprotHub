@@ -11,7 +11,7 @@ from saprot.utils.weights import PretrainedModel
 from saprot.utils.data_preprocess import convert_outputs_to_pdb
 
 
-from inverse_folding import inverse_folding
+from tests.direct_uses.inverse_folding import inverse_folding
 
 
 def refold(
