@@ -10,6 +10,7 @@ from string import ascii_uppercase, ascii_lowercase
 from immutabledict import immutabledict
 from dataclasses import dataclass
 
+from saprot.utils.downloader import AlphaDBDownloader, StructureDownloader
 from saprot.utils.foldseek_util import (
     StructuralAwareSequence,
     StructuralAwareSequences,
@@ -70,7 +71,6 @@ class UniProtID:
 
     SA_seq: StructuralAwareSequences = None
 
-    @property
     def __post_init__(self):
         if self.uniprot_type not in ["AF2", "PDB"]:
             raise ValueError(
@@ -140,7 +140,8 @@ class InputDataDispatcher:
         self, proteins: Union[List[UniProtID], Tuple[UniProtID], UniProtID]
     ) -> UniProtIDs:
         protein_list = UniProtIDs(proteins)
-        files = self.uniprot2pdb(protein_list.uniprot_ids)
+
+        files= StructureDownloader(data_type='pdb', save_dir=self.STRUCTURE_HOME).run(payload=protein_list.uniprot_ids)
 
         foldseeq_runner = FoldSeek(
             self.FOLDSEEK_PATH,
@@ -155,7 +156,10 @@ class InputDataDispatcher:
     def parse_data(
         self, data_type: DATA_TYPES_HINT, raw_data: Union[str, Tuple, List]
     ) -> Union[Tuple[StructuralAwareSequence], Tuple[StructuralAwareSequencePair]]:
-
+        if raw_data is None:
+            raise ValueError("No data provided")
+        
+        #print(f'Received data {data_type} {raw_data}')
         # 0. Single AA Sequence
         if data_type == "Single_AA_Sequence":
             input_seq: str = raw_data
@@ -170,15 +174,13 @@ class InputDataDispatcher:
 
         # 1. Single SA Sequence
         if data_type == "Single_SA_Sequence":
-            input_seq = raw_data
-            sa_seq = input_seq
+            sa_seq = raw_data
 
             return (StructuralAwareSequence(None, None,skip_post_processing=True).from_SA_sequence(sa_seq))
 
         # 2. Single UniProt ID
         if data_type == "Single_UniProt_ID":
-            input_seq = raw_data
-            uniprot_id = input_seq
+            uniprot_id = raw_data
 
             protein = UniProtID(uniprot_id, "AF2", "A")
             protein_list = self.UniProtID2SA(proteins=protein)
