@@ -460,8 +460,11 @@ class FoldSeek:
                 print("stderr end")
                 
                 raise RuntimeError(
-                    "FoldSeek failed\nstdout:\n%s\n\nstderr:\n%s\n"
-                    % (stdout.decode("utf-8"), stderr[:500_000].decode("utf-8"))
+                    f"FoldSeek failed. \n"
+                    f"Full Command:\n{cmd}\n"
+                    f"return code: {retcode}\n"
+                    f"stdout:\n{stdout.decode('utf-8')}\n\n"
+                    f"stderr:\n{stderr[:500_000].decode('utf-8')}\n"
                 )
                 
             ret=tuple(open(tmp_save_path, "r").read().strip().split("\n"))
