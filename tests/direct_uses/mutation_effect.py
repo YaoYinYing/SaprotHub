@@ -1,6 +1,5 @@
 import os
 
-import torch
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )

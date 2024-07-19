@@ -12,95 +12,21 @@ from transformers.models.esm.openfold_utils.protein import (
 from transformers.models.esm.openfold_utils.feats import atom14_to_atom37
 from string import ascii_uppercase, ascii_lowercase
 
-from immutabledict import immutabledict
 from dataclasses import dataclass
 
 from saprot.utils.constants import DATA_TYPES, DATA_TYPES_HINT
-from saprot.utils.downloader import StructureDownloader
-from saprot.utils.foldseek_util import (
+from saprot.utils.dataclasses import (
     StructuralAwareSequence,
-    StructuralAwareSequences,
-    Mask,
-    FoldSeek,
+    StructuralAwareSequencePair,
+    UniProtID,
+    UniProtIDs,
 )
-
+from saprot.utils.downloader import StructureDownloader
+from saprot.utils.foldseek_util import FoldSeek
 import shutil
 
 
 from huggingface_hub import snapshot_download
-
-
-@dataclass
-class UniProtID:
-    uniprot_id: str
-    uniprot_type: Literal["AF2", "PDB"]
-    chain_id: str
-
-    SA_seq: StructuralAwareSequences = None
-
-    def __post_init__(self):
-        if self.uniprot_type not in ["AF2", "PDB"]:
-            raise ValueError(
-                f"UniProt type must be either 'AF2' or 'PDB', got {self.uniprot_type}"
-            )
-
-        if self.uniprot_id.endswith(".pdb") or self.uniprot_id.endswith(
-            ".cif"
-        ):
-            self.uniprot_id = self.uniprot_id[:-4]
-
-    @property
-    def SA(self) -> StructuralAwareSequence:
-        return self.SA_seq[self.chain_id]
-
-    def set_sa_name(self, name):
-        for sa in self.SA_seq.seqs.values():
-            sa.name = name
-
-
-@dataclass
-class StructuralAwareSequencePair:
-    seq_1: StructuralAwareSequence
-    seq_2: StructuralAwareSequence
-
-    @property
-    def paired_sa(self):
-        raise NotImplementedError
-
-    @property
-    def as_tuple(self) -> tuple[StructuralAwareSequence]:
-        return (self.seq_1, self.seq_2)
-
-
-@dataclass
-class UniProtIDs:
-    uniprot_ids: Union[tuple[UniProtID]]
-
-    def __post_init__(self):
-        if isinstance(self.uniprot_ids, UniProtID):
-            self.uniprot_ids = [self.uniprot_ids]
-
-    @property
-    def all_labels(self) -> tuple[str]:
-        return tuple(uniprot.uniprot_id for uniprot in self.uniprot_ids)
-
-    @property
-    def is_AF2_structures(self) -> bool:
-        return all(x.uniprot_type == "AF2" for x in self.uniprot_ids)
-
-    def map_sa_to_uniprot_ids(self, sa_seqs: tuple[StructuralAwareSequences]):
-        if not len(sa_seqs) == len(self.uniprot_ids):
-            raise ValueError(
-                f"The number of uniprot ids ({len(self.uniprot_ids)}) and the number of sa_seqs ({len(sa_seqs)}) must be equal."
-            )
-
-        for i, sa in enumerate(sa_seqs):
-            self.uniprot_ids[i].SA_seq = sa
-        return
-
-    @property
-    def SA_seqs_as_tuple(self) -> tuple[StructuralAwareSequence]:
-        return tuple(x.SA for x in self.uniprot_ids)
 
 
 @dataclass

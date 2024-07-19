@@ -2,11 +2,11 @@ import os
 import pandas as pd
 import torch
 from rich.progress import track
-from saprot.utils.foldseek_util import StructuralAwareSequences, FoldSeek
+from saprot.utils.dataclasses import StructuralAwareSequences
+from saprot.utils.foldseek_util import FoldSeek, FoldSeekSetup
 from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )
-from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.weights import PretrainedModel
 
 

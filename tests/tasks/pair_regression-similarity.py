@@ -5,7 +5,7 @@ from saprot.utils.data_preprocess import (
     InputDataDispatcher,
     StructuralAwareSequencePair,
 )
-from saprot.utils.foldseek_util import FoldSeekSetup, FoldSeek
+from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.middleware import SADataAdapter
 from saprot.utils.weights import AdaptedModel
 
@@ -29,7 +29,7 @@ def get_thermol_model():
         huggingface_id="SaProtHub",
         model_name="Model-Structural_Similarity-650M",
         task_type="pair_regression",
-        num_of_categories=10
+        num_of_categories=10,
     )
 
     model, tokenizer = weight_worker.load_model()

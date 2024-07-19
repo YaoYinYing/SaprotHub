@@ -1,4 +1,5 @@
-from saprot.utils.foldseek_util import FoldSeekSetup, Mask, FoldSeek
+from saprot.utils.dataclasses import Mask
+from saprot.utils.foldseek_util import FoldSeekSetup, FoldSeek
 
 
 def main():

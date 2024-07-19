@@ -2,10 +2,8 @@ import os
 
 import torch
 
-from saprot.utils.foldseek_util import (
-    Mask,
-    StructuralAwareSequence,
-)
+
+from saprot.utils.dataclasses import Mask, StructuralAwareSequence
 from saprot.utils.weights import PretrainedModel
 
 from saprot.utils.data_preprocess import convert_outputs_to_pdb

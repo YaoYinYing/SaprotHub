@@ -3,12 +3,8 @@ from typing import Tuple
 
 import torch
 
-from saprot.utils.foldseek_util import (
-    FoldSeekSetup,
-    Mask,
-    FoldSeek,
-    StructuralAwareSequence,
-)
+from saprot.utils.dataclasses import Mask, StructuralAwareSequence
+from saprot.utils.foldseek_util import FoldSeek, FoldSeekSetup
 from saprot.utils.weights import PretrainedModel, SaProtModelHint
 from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
 

@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import torch
 from saprot.utils.data_preprocess import InputDataDispatcher
-from saprot.utils.foldseek_util import FoldSeekSetup, FoldSeek
+from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.middleware import SADataAdapter
 from saprot.utils.weights import AdaptedModel
 

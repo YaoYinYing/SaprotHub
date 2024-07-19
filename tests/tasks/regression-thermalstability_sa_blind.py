@@ -2,11 +2,9 @@ import os
 
 import torch
 from saprot.utils.data_preprocess import InputDataDispatcher
-from saprot.utils.foldseek_util import (
-    FoldSeekSetup,
-    FoldSeek,
-    StructuralAwareSequence,
-)
+
+from saprot.utils.dataclasses import StructuralAwareSequence
+from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.weights import AdaptedModel
 from saprot.utils.middleware import SADataAdapter
 

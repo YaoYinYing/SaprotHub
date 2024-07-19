@@ -5,7 +5,8 @@ import torchmetrics
 
 from torch.nn.functional import cross_entropy
 
-from saprot.utils.foldseek_util import Mask
+from saprot.utils.dataclasses import Mask
+
 
 from ..model_interface import register_model
 from .base import SaprotBaseModel

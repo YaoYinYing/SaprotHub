@@ -1,6 +1,6 @@
 import os
 
-import torch
+
 from saprot.utils.weights import PretrainedModel
 
 
