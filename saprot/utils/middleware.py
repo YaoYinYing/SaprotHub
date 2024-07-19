@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Protocol, Literal, Generator, Union
+from typing import Any, Callable, Protocol, Literal, Generator, Union
 from typing_extensions import runtime_checkable
 import warnings
 
@@ -135,19 +135,5 @@ class SADataAdapter:
         for input in inputs:
             yield self._adapt_single(input)
 
-    def __call__(
-        self,
-        inputs: Union[
-            tuple[StructuralAwareSequence], tuple[StructuralAwareSequencePair]
-        ],
-    ) -> Generator:
-        """
-        Allows the adapter to be called directly as a function.
-
-        Parameters:
-        - inputs: A tuple of StructuralAwareSequence or StructuralAwareSequencePair objects.
-
-        Returns:
-        - Generator: A generator yielding adapted items.
-        """
-        return self.adapt(inputs)
+    #  Allows the adapter to be called directly as a function.
+    __call__ : Callable[..., Any] = adapt

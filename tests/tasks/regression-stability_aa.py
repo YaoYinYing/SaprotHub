@@ -1,6 +1,7 @@
 import os
 
 import torch
+from rich.progress import track
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.middleware import SADataAdapter
@@ -41,18 +42,16 @@ def get_thermol_model():
 
     outputs_list = []
 
-    for i, s in enumerate(fitter(seqs)):
+    for i, s in track(enumerate(fitter(seqs))):
         inputs = tokenizer(s, return_tensors="pt")
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad():
             outputs = model(inputs)
         outputs_list.append(outputs)
 
-    outputs = [output.squeeze().tolist() for output in outputs_list]
-
-    for index, output in enumerate(outputs_list):
-        print(f"For Sequence {index}, Prediction: Value {output.item()}")
-
+    output_list = [output.squeeze().tolist() for output in outputs_list]
+    for index, output in enumerate(output_list):
+        print(f"For Sequence {index}, Prediction: Value {output}")
 
 def main():
     get_thermol_model()

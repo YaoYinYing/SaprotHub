@@ -2,6 +2,7 @@ import os
 
 import pandas as pd
 import torch
+from rich.progress import track
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.middleware import SADataAdapter
@@ -58,7 +59,7 @@ def get_subcellular_model():
 
     outputs_list = []
 
-    for i, s in enumerate(fitter(seqs)):
+    for i, s in track(enumerate(fitter(seqs))):
         inputs = tokenizer(s, return_tensors="pt")
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
         with torch.no_grad():

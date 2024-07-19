@@ -1,6 +1,7 @@
 import os
 
 import torch
+from rich.progress import track
 from saprot.utils.data_preprocess import (
     InputDataDispatcher,
     StructuralAwareSequencePair,
@@ -46,7 +47,7 @@ def get_thermol_model():
 
     outputs_list = []
 
-    for i, s in enumerate(fitter(seqs)):
+    for i, s in track(enumerate(fitter(seqs))):
         input_1 = tokenizer(s[0], return_tensors="pt")
         input_1 = {k: v.to(model.device) for k, v in input_1.items()}
         input_2 = tokenizer(s[1], return_tensors="pt")
@@ -55,10 +56,10 @@ def get_thermol_model():
         with torch.no_grad():
             outputs = model(input_1, input_2)
         outputs_list.append(outputs)
-
+    print(outputs_list)
     output_list = [output.squeeze().tolist() for output in outputs_list]
-    for index, output in enumerate(outputs_list):
-        print(f"For Sequence {index}, Prediction: Value {output.item()}")
+    for index, output in enumerate(output_list):
+        print(f"For Sequence {index}, Prediction: Value {output}")
 
 
 def main():
