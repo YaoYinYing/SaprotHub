@@ -42,7 +42,7 @@ MODEL_LOADER_TYPE = (
 
 
 @dataclass
-class PretrainedModel:
+class PretrainedModelLoader:
     """
     A class representing a pretrained model, providing functionality to fetch and load the model.
 
@@ -204,7 +204,7 @@ class PretrainedModel:
 
 
 @dataclass
-class AdaptedModel(PretrainedModel):
+class AdaptedModelLoader(PretrainedModelLoader):
     task_type: ALL_TASKS_HINT = None
 
     _lora_kwargs: dict = field(default_factory=dict)
@@ -287,7 +287,7 @@ class AdaptedModel(PretrainedModel):
         return os.path.join(self.weights_dir, "adapter_config.json")
 
     def setup_base_model(self) -> str:
-        p = PretrainedModel(
+        p = PretrainedModelLoader(
             dir=self.dir, model_name=self.base_model, device=self.device
         )
         p._fetch_model()

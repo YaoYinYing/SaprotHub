@@ -6,7 +6,7 @@ from rich.progress import track
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup
 from saprot.utils.middleware import SADataAdapter
-from saprot.utils.weights import AdaptedModel
+from saprot.utils.weights import AdaptedModelLoader
 
 import torch.nn.functional as F
 
@@ -38,7 +38,7 @@ dispatcher = InputDataDispatcher(
 
 
 def get_subcellular_model():
-    weight_worker = AdaptedModel(
+    weight_worker = AdaptedModelLoader(
         dir="./weights/SaProt/",
         huggingface_id="SaProtHub",
         model_name="Model-Subcellular_Localization-650M",

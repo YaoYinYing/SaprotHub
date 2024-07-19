@@ -4,7 +4,7 @@ import torch
 from rich.progress import track
 from saprot.utils.data_preprocess import InputDataDispatcher
 from saprot.utils.foldseek_util import FoldSeekSetup
-from saprot.utils.weights import AdaptedModel
+from saprot.utils.weights import AdaptedModelLoader
 from saprot.utils.middleware import SADataAdapter
 
 foldseek = FoldSeekSetup(
@@ -22,7 +22,7 @@ dispatcher = InputDataDispatcher(
 
 
 def get_thermol_model():
-    weight_worker = AdaptedModel(
+    weight_worker = AdaptedModelLoader(
         dir="./weights/SaProt/",
         huggingface_id="SaProtHub",
         model_name="Model-Thermostability-650M",
@@ -45,14 +45,15 @@ def get_thermol_model():
 
     for i, s in track(enumerate(fitter(seqs))):
         inputs = tokenizer(s, return_tensors="pt")
-        print(f'Tokenized: {inputs}')
+        #print(f'Tokenized: {inputs}')
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
-        print(f'Inputs: {inputs}')
+        #print(f'Inputs: {inputs}')
         with torch.no_grad():
             outputs = model(inputs)
             print(f'Outputs: {outputs}')
 
         outputs_list.append(outputs)
+        break
 
     print(outputs_list)
 

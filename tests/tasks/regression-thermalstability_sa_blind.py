@@ -6,7 +6,7 @@ from saprot.utils.data_preprocess import InputDataDispatcher
 
 from saprot.utils.dataclasses import StructuralAwareSequence
 from saprot.utils.foldseek_util import FoldSeekSetup
-from saprot.utils.weights import AdaptedModel
+from saprot.utils.weights import AdaptedModelLoader
 from saprot.utils.middleware import SADataAdapter
 
 foldseek = FoldSeekSetup(
@@ -24,7 +24,7 @@ dispatcher = InputDataDispatcher(
 
 
 def get_thermol_model():
-    weight_worker = AdaptedModel(
+    weight_worker = AdaptedModelLoader(
         dir="./weights/SaProt/",
         huggingface_id="SaProtHub",
         model_name="Model-Thermostability-650M",

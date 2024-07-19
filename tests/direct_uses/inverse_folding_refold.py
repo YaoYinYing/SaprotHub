@@ -4,7 +4,7 @@ import torch
 
 
 from saprot.utils.dataclasses import Mask, StructuralAwareSequence
-from saprot.utils.weights import PretrainedModel
+from saprot.utils.weights import PretrainedModelLoader
 
 from saprot.utils.data_preprocess import convert_outputs_to_pdb
 
@@ -18,7 +18,7 @@ def refold(
     mask: Mask,
     save_dir: str = ".",
 ):
-    model_loader = PretrainedModel(
+    model_loader = PretrainedModelLoader(
         dir=os.path.abspath("./weights/SaProt/"),
         model_name="esmfold_v1",
         huggingface_id="facebook",

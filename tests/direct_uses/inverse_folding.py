@@ -5,14 +5,14 @@ import torch
 
 from saprot.utils.dataclasses import Mask, StructuralAwareSequence
 from saprot.utils.foldseek_util import FoldSeek, FoldSeekSetup
-from saprot.utils.weights import PretrainedModel, SaProtModelHint
+from saprot.utils.weights import PretrainedModelLoader, SaProtModelHint
 from saprot.model.saprot.saprot_if_model import SaProtIFModel, IF_METHOD_HINT
 
 
 def inverse_folding(
     input_structure: str, chain_id: str, mask_area: str, save_dir: str = "."
 ) -> Tuple[StructuralAwareSequence, list[str], Mask]:
-    model_loader = PretrainedModel(
+    model_loader = PretrainedModelLoader(
         dir=os.path.abspath("./weights/SaProt/"),
         model_name="SaProt_650M_AF2_inverse_folding",
     )

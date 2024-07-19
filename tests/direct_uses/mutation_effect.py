@@ -4,11 +4,11 @@ from saprot.model.saprot.saprot_foldseek_mutation_model import (
     SaprotFoldseekMutationModel,
 )
 from saprot.utils.foldseek_util import FoldSeekSetup
-from saprot.utils.weights import PretrainedModel
+from saprot.utils.weights import PretrainedModelLoader
 
 
 def main():
-    model_loader = PretrainedModel(
+    model_loader = PretrainedModelLoader(
         dir=os.path.abspath("./weights/SaProt/"),
         model_name="SaProt_650M_AF2",
     )

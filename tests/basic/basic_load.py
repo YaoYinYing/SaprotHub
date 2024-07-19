@@ -1,10 +1,10 @@
 import os
 
 
-from saprot.utils.weights import PretrainedModel
+from saprot.utils.weights import PretrainedModelLoader
 
 def main():
-    model, tokenizer = PretrainedModel(
+    model, tokenizer = PretrainedModelLoader(
         dir=os.path.abspath("./weights/SaProt/"),
         model_name="SaProt_35M_AF2",
     ).load_model()
