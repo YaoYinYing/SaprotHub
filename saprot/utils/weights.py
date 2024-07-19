@@ -5,16 +5,16 @@ from typing import Literal
 from dataclasses import dataclass, field
 import warnings
 
-import platformdirs
-from easydict import EasyDict
-from huggingface_hub import snapshot_download
-import torch
-
-from saprot.utils.tasks import ALL_TASKS, ALL_TASKS_HINT, TASK2MODEL
-
 import torch
 import torch.backends
 import torch.backends.mps
+
+
+import platformdirs
+from easydict import EasyDict
+from huggingface_hub import snapshot_download
+
+from saprot.utils.tasks import ALL_TASKS, ALL_TASKS_HINT, TASK2MODEL
 
 
 def best_device() -> torch.device:
@@ -64,9 +64,10 @@ class PretrainedModel:
     def check_device(self):
         if self.device == "auto":
             self.device = best_device()
-            print(f"Using device: {self.device}")
         else:
             self.device = torch.device(self.device)
+
+        print(f"Using device: {self.device}")
 
     @property
     def weights_dir(self):
@@ -286,7 +287,9 @@ class AdaptedModel(PretrainedModel):
         return os.path.join(self.weights_dir, "adapter_config.json")
 
     def setup_base_model(self) -> str:
-        p = PretrainedModel(dir=self.dir, model_name=self.base_model)
+        p = PretrainedModel(
+            dir=self.dir, model_name=self.base_model, device=self.device
+        )
         p._fetch_model()
 
         self.base_model_path = p.weights_dir

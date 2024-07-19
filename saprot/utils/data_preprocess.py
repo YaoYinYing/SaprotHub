@@ -67,6 +67,10 @@ class StructuralAwareSequencePair:
     def paired_sa(self):
         raise NotImplementedError
 
+    @property
+    def as_tuple(self) -> tuple[StructuralAwareSequence]:
+        return (self.seq_1, self.seq_2)
+
 
 @dataclass
 class UniProtIDs:

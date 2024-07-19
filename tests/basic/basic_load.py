@@ -6,7 +6,8 @@ from saprot.utils.weights import PretrainedModel
 
 def main():
     model, tokenizer = PretrainedModel(
-        dir=os.path.abspath("./weights/SaProt/"), model_name="SaProt_35M_AF2"
+        dir=os.path.abspath("./weights/SaProt/"),
+        model_name="SaProt_35M_AF2",
     ).load_model()
 
     device = model.device
