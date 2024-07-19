@@ -89,7 +89,7 @@ def main():
     foldseek = model.foldseek_path
 
     print(foldseek)
-    parsed_seqs = FoldSeek(foldseek, plddt_mask=False).query(pdb_path)
+    parsed_seqs = FoldSeek(foldseek).query(pdb_path)
 
     print(f"{parsed_seqs=}")
 

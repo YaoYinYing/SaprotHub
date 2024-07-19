@@ -12,6 +12,8 @@ import pooch
 import platformdirs
 import tempfile
 import subprocess
+
+import warnings
 from joblib import Parallel, delayed
 from rich.progress import track
 
@@ -20,6 +22,7 @@ from saprot.utils.dataclasses import (
     StructuralAwareSequences,
 )
 
+class PlddtMaskWarning(Warning): ...
 
 @contextlib.contextmanager
 def tmpdir_manager(base_dir: Optional[str] = None):
@@ -162,7 +165,6 @@ class FoldSeekSetup:
 class FoldSeek:
     foldseek: str
     nproc: int = os.cpu_count()
-    plddt_mask: bool = False
     plddt_threshold: float = 70.0
     name: str = None
 
@@ -171,13 +173,13 @@ class FoldSeek:
             raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
 
     def query(
-        self, pdb_file: str, chain_ids: tuple[str] = None
+        self, pdb_file: str, chain_ids: tuple[str] = None, plddt_mask: bool = False
     ) -> StructuralAwareSequences:
         if pdb_file is None or not os.path.exists(pdb_file):
             raise FileNotFoundError(f"PDB file not found: {pdb_file}")
 
         self.name = os.path.basename(pdb_file)
-        if self.plddt_mask:
+        if plddt_mask:
             plddts = extract_plddt(pdb_file)
             # Mask regions with plddt < threshold
             indices = np.where(plddts < self.plddt_threshold)[0]
@@ -243,7 +245,7 @@ class FoldSeek:
             )
 
             # Mask low plddt
-            if self.plddt_mask:
+            if plddt_mask:
                 np_seq = np.array(list(new_seq.structural_seq))
                 np_seq[indices] = "#"
                 new_seq.structural_seq = "".join(np_seq)
@@ -257,12 +259,22 @@ class FoldSeek:
         )
 
     def parallel_queries(
-        self, pdb_files: Union[tuple, list]
+        self, pdb_files: Union[tuple, list], plddt_masks: Union[tuple[bool],bool] = False
     ) -> tuple[StructuralAwareSequences]:
+        if isinstance(plddt_masks, bool):
+
+            warnings.warn(PlddtMaskWarning(f'Apply PLDDT mask ({plddt_masks}) to all PDB queries'))
+            warnings.filterwarnings("ignore", category=PlddtMaskWarning)
+            plddt_masks = tuple([plddt_masks * len(pdb_files)])
+        
+        if len(plddt_masks) != len(pdb_files):
+            raise ValueError(
+                "The length of plddt_masks must be equal to the length of pdb_files"
+            )
         return tuple(
             Parallel(n_jobs=self.nproc)(
-                delayed(self.query)(pdb_file)
-                for pdb_file in track(pdb_files, description="FoldSeeking...")
+                delayed(self.query)(pdb_file,None,plddt_mask)
+                for pdb_file,plddt_mask in track(zip(pdb_files,plddt_masks), description="FoldSeeking...")
             )
         )
 

@@ -26,7 +26,7 @@ def inverse_folding(
     pdb_path = input_structure
 
     print(foldseek)
-    parsed_seqs = FoldSeek(foldseek, plddt_mask=False).query(pdb_path)[
+    parsed_seqs = FoldSeek(foldseek).query(pdb_path)[
         chain_id
     ]
     print(parsed_seqs)

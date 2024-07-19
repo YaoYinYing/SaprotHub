@@ -3,7 +3,6 @@ import os
 
 from saprot.utils.weights import PretrainedModel
 
-
 def main():
     model, tokenizer = PretrainedModel(
         dir=os.path.abspath("./weights/SaProt/"),

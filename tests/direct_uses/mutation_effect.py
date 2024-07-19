@@ -26,7 +26,6 @@ def main():
     model = SaprotFoldseekMutationModel(**config)
     tokenizer = model.tokenizer
 
-    device = model.device
     model.eval()
 
     seq = "MdEvVpQpLrVyQdYaKv"

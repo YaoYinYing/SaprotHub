@@ -9,7 +9,7 @@ import random
 import numpy as np
 
 from utils.others import merge_file
-from utils.foldseek_util import extract_plddt
+from utils.foldseek_util import FoldSeek,tmpdir_manager
 from utils.constants import aa_set, foldseek_struc_vocab, aa_list
 from ..model_interface import register_model
 from .base import SaprotBaseModel
@@ -86,72 +86,43 @@ class SaprotFoldseekMutationModel(SaprotBaseModel):
 
         structure_type = "cif" if structure_type == "mmcif" else structure_type
 
-        # Sample a random rank to avoid file conflict
-        rank = random.randint(0, 1000000)
+        with tmpdir_manager() as tmpdir:
+            tmp_pdb_path= os.path.join(tmpdir, f"EsmFoldseekMutationModel_{self.global_rank}.{structure_type}")
 
-        tmp_pdb_path = f"EsmFoldseekMutationModel_{self.global_rank}_{rank}.{structure_type}"
-        tmp_save_path = (
-            f"EsmFoldseekMutationModel_{self.global_rank}_{rank}.tsv"
-        )
+            # Save structure content to temporary file
+            with open(tmp_pdb_path, "w") as w:
+                w.write(structure_content)
 
-        # Save structure content to temporary file
-        with open(tmp_pdb_path, "w") as w:
-            w.write(structure_content)
 
-        # Get foldseek structural sequecne
-        cmd = f"{self.foldseek_path} structureto3didescriptor -v 0 --threads 1 {tmp_pdb_path} {tmp_save_path}"
-        import subprocess
+            SA=FoldSeek(self.foldseek_path).query(pdb_file=tmp_pdb_path,plddt_mask=True)
+            # Get foldseek structural sequecne
+            
+            struc_seq = SA['A'].structural_seq
 
-        result = subprocess.run(
-            cmd, shell=True, stdout=subprocess.PIPE, text=True
-        )
-        print(result.stdout)
-        # os.system(cmd)
+            if self.mask_rate is not None:
+                # Mask random structure tokens
+                indices = np.random.choice(
+                    len(struc_seq),
+                    int(len(struc_seq) * self.mask_rate),
+                    replace=False,
+                )
+                np_seq = np.array(list(struc_seq))
+                np_seq[indices] = "#"
+                struc_seq = "".join(np_seq)
 
-        with open(tmp_save_path, "r") as r:
-            line = r.readline()
-            struc_seq = line.split("\t")[2]
+            if self.substitute_rate is not None:
+                # Substitute random structure tokens
+                indices = np.random.choice(
+                    len(struc_seq),
+                    int(len(struc_seq) * self.substitute_rate),
+                    replace=False,
+                )
+                np_seq = np.array(list(struc_seq))
+                np_seq[indices] = np.random.choice(
+                    list(foldseek_struc_vocab), len(indices)
+                )
+                struc_seq = "".join(np_seq)
 
-        # if plddt is not None:
-        # plddts = np.array(plddt)
-        plddts = extract_plddt(tmp_pdb_path)
-        assert len(plddts) == len(
-            struc_seq
-        ), f"Length mismatch: {len(plddts)} != {len(struc_seq)}"
-
-        # Mask regions with plddt < threshold
-        indices = np.where(plddts < self.plddt_threshold)[0]
-        np_seq = np.array(list(struc_seq))
-        np_seq[indices] = "#"
-        struc_seq = "".join(np_seq)
-
-        if self.mask_rate is not None:
-            # Mask random structure tokens
-            indices = np.random.choice(
-                len(struc_seq),
-                int(len(struc_seq) * self.mask_rate),
-                replace=False,
-            )
-            np_seq = np.array(list(struc_seq))
-            np_seq[indices] = "#"
-            struc_seq = "".join(np_seq)
-
-        if self.substitute_rate is not None:
-            # Substitute random structure tokens
-            indices = np.random.choice(
-                len(struc_seq),
-                int(len(struc_seq) * self.substitute_rate),
-                replace=False,
-            )
-            np_seq = np.array(list(struc_seq))
-            np_seq[indices] = np.random.choice(
-                list(foldseek_struc_vocab), len(indices)
-            )
-            struc_seq = "".join(np_seq)
-
-        os.remove(tmp_pdb_path)
-        os.remove(tmp_save_path)
-        os.remove(tmp_save_path + ".dbtype")
         return struc_seq
 
     def forward(

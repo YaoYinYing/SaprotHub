@@ -293,7 +293,10 @@ class UniProtID:
     def set_sa_name(self, name):
         for sa in self.SA_seq.seqs.values():
             sa.name = name
-
+    
+    @property
+    def is_AF2_structure(self) -> bool:
+        return self.uniprot_type=="AF2"
 
 @dataclass
 class StructuralAwareSequencePair:
@@ -320,10 +323,6 @@ class UniProtIDs:
     @property
     def all_labels(self) -> tuple[str]:
         return tuple(uniprot.uniprot_id for uniprot in self.uniprot_ids)
-
-    @property
-    def is_AF2_structures(self) -> bool:
-        return all(x.uniprot_type == "AF2" for x in self.uniprot_ids)
 
     def map_sa_to_uniprot_ids(self, sa_seqs: tuple[StructuralAwareSequences]):
         if not len(sa_seqs) == len(self.uniprot_ids):
