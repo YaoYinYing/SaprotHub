@@ -176,10 +176,12 @@ class FoldSeekSetup:
             return f"{self.base_url}/foldseek-osx-universal.tar.gz"
         if self.os_build == "Linux":
             if self.arch == "x86_64":
-                if self.build_with_flag("sse2"):
-                    return f"{self.base_url}/foldseek-linux-sse2.tar.gz"
+                # https://github.com/steineggerlab/foldseek/wiki#system-requirements
                 if self.build_with_flag("avx2"):
                     return f"{self.base_url}/foldseek-linux-avx2.tar.gz"
+                if self.build_with_flag("sse2"):
+                    return f"{self.base_url}/foldseek-linux-sse2.tar.gz"
+                
             if self.arch == "aarch64":
                 return f"{self.base_url}/foldseek-linux-arm64.tar.gz"
         raise NotImplementedError(

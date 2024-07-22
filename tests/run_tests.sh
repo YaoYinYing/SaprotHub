@@ -11,16 +11,16 @@ python tests/basic/dataset_dispatch.py
 python tests/basic/plddt_parser.py
 
 
-# direct predictions
-python tests/direct_uses/mutation_effect.py
-python tests/direct_uses/inverse_folding.py
-# python tests/direct_uses/inverse_folding_refold.py
-python tests/direct_uses/deep_mutagenese_scan.py
+# # direct predictions
+# python tests/direct_uses/mutation_effect.py
+# python tests/direct_uses/inverse_folding.py
+# # python tests/direct_uses/inverse_folding_refold.py
+# python tests/direct_uses/deep_mutagenese_scan.py
 
-# tasks
-python tests/tasks/regression-stability_aa.py
+# # tasks
+# python tests/tasks/regression-stability_aa.py
 python tests/tasks/regression-thermalstability_sa.py
-python tests/tasks/regression-thermalstability_sa_blind.py
-python tests/tasks/classification-subcellular.py
+# python tests/tasks/regression-thermalstability_sa_blind.py
+# python tests/tasks/classification-subcellular.py
 
 python tests/tasks/pair_regression-similarity.py

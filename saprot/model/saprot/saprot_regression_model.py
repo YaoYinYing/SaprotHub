@@ -45,7 +45,11 @@ class SaprotRegressionModel(SaprotBaseModel):
                 logits = self.model.classifier.out_proj(x).squeeze(dim=-1)
 
             else:
-                logits = self.model(**inputs).logits.squeeze(dim=-1)
+                logits = self.model.forward(**inputs).logits.squeeze(dim=-1)
+                
+                print(f'{type(self.model)}=')
+                print(f'{logits=}')
+                
 
         # For ProtBERT
         elif hasattr(self.model, "bert"):
