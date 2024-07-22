@@ -26,9 +26,7 @@ def inverse_folding(
     pdb_path = input_structure
 
     print(foldseek)
-    parsed_seqs = FoldSeek(foldseek).query(pdb_path)[
-        chain_id
-    ]
+    parsed_seqs = FoldSeek(foldseek).query(pdb_path)[chain_id]
     print(parsed_seqs)
 
     # `method` refers to the prediction method. It could be either "argmax" or "multinomial".

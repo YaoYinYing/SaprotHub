@@ -136,4 +136,4 @@ class SADataAdapter:
             yield self._adapt_single(input)
 
     #  Allows the adapter to be called directly as a function.
-    __call__ : Callable[..., Any] = adapt
+    __call__: Callable[..., Any] = adapt

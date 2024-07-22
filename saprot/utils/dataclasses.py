@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional, Union
+import warnings
 
 from saprot.utils.mask_tool import shorter_range
 
@@ -34,7 +35,7 @@ class Mask:
             i for i, k in enumerate(masked_sequence) if k == self.mask_label
         )
         self.mask_pos_range = shorter_range(
-            mask, connector=self.mask_connector, seperator=self.mask_separator
+            mask, connector=self.mask_connector, separator=self.mask_separator
         )
         print(f"Generate mask from masked sequence: {self.mask_pos_range}")
         self.zero_indexed = True
@@ -63,11 +64,49 @@ class Mask:
         expanded_mask_pos = expand_range(
             shortened_str=self.mask_pos_range,
             connector=self.mask_connector,
-            seperator=self.mask_separator,
+            separator=self.mask_separator,
         )
         if not self.zero_indexed:
             expanded_mask_pos = [i - 1 for i in expanded_mask_pos]
         return expanded_mask_pos
+
+    def reversed(self, full_length: Optional[int] = None) -> "Mask":
+        """
+        Create a new Mask object with the mask positions reversed.
+
+        Parameters:
+        full_length (int, optional): The total length of the mask after reversal. If not provided, it will be automatically determined based on the existing mask positions. Default is None.
+
+        Returns:
+        Mask: A new Mask object with positions reversed.
+
+        Raises:
+        ValueError: If `full_length` is not provided and `mask_pos_range` is also not provided, an error is raised indicating that `full_length` must be specified.
+        """
+
+        # Check if full_length is provided, if not, try to determine it from the existing mask positions
+        if not full_length:
+            # If mask position range is also not provided, raise an error
+            if not self.mask_pos_range:
+                raise ValueError(
+                    "full_length must be provided when mask_pos_range is not provided."
+                )
+            # Determine full_length as the maximum value of the existing mask positions
+            full_length = max(self.mask)  # one-indexed
+            # Issue a warning that full_length is determined automatically
+            warnings.warn(
+                SyntaxWarning(
+                    f"Create reversed Mask using the maximum mask position ({full_length}) instead. This may not be accurate."
+                )
+            )
+
+        # Create a new Mask object with positions reversed, using the range of numbers excluding the existing mask positions
+        return Mask(
+            mask_pos_range=shorter_range(
+                [i + 1 for i in range(full_length) if i not in self.mask]
+            ),
+            zero_indexed=False,
+        )
 
     def masked(self, sequence: Union[str, list, tuple]) -> str:
         """
@@ -84,9 +123,9 @@ class Mask:
         # return sequence if there is no mask
         if self.mask == []:
             return sequence
-        
+
         sequence = list(sequence)
-        
+
         if len(sequence) < max(self.mask) + 1:
             raise ValueError(
                 f"Sequence length {len(sequence)} is less than the mask position range {self.mask_pos_range}"
@@ -298,10 +337,11 @@ class UniProtID:
     def set_sa_name(self, name):
         for sa in self.SA_seq.seqs.values():
             sa.name = name
-    
+
     @property
     def is_AF2_structure(self) -> bool:
-        return self.uniprot_type=="AF2"
+        return self.uniprot_type == "AF2"
+
 
 @dataclass
 class StructuralAwareSequencePair:

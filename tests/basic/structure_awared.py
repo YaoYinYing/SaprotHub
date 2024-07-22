@@ -15,9 +15,7 @@ def main():
     ).foldseek
 
     print(foldseek)
-    parsed_seqs = FoldSeek(foldseek, ["A"]).query(
-        pdb_file=pdb_path
-    )
+    parsed_seqs = FoldSeek(foldseek, ["A"]).query(pdb_file=pdb_path)
 
     parsed_seqs = parsed_seqs.get("A")
 
@@ -30,6 +28,22 @@ def main():
 
     print(parsed_seqs.masked_seq(mask))
     print(parsed_seqs.masked_struct_seq(mask))
+
+    reversed_mask_0 = mask.reversed()
+    reversed_mask_1 = mask.reversed(
+        full_length=len(parsed_seqs.amino_acid_seq)
+    )
+    reversed_mask_2 = mask.reversed(full_length=100)
+
+    print(f"{mask=}")
+    print(f"{reversed_mask_0=}")
+    print(f"{reversed_mask_1=}")
+    print(f"{reversed_mask_2=}")
+
+    print(parsed_seqs.masked_seq(mask))
+    print(parsed_seqs.masked_seq(reversed_mask_0))
+    print(parsed_seqs.masked_seq(reversed_mask_1))
+    print(parsed_seqs.masked_seq(reversed_mask_2))
 
 
 if __name__ == "__main__":

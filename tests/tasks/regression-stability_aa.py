@@ -53,6 +53,7 @@ def get_thermol_model():
     for index, output in enumerate(output_list):
         print(f"For Sequence {index}, Prediction: Value {output}")
 
+
 def main():
     get_thermol_model()
 

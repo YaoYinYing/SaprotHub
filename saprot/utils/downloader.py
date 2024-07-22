@@ -29,10 +29,9 @@ class StructureDownloader:
     save_dir: str
     nproc: int = os.cpu_count()
 
-
     def __post_init__(self):
         self.save_dir = os.path.abspath(self.save_dir)
-        os.makedirs(self.save_dir,exist_ok=True)
+        os.makedirs(self.save_dir, exist_ok=True)
 
     def process_url(self, data_id: UniProtID) -> str:
         """

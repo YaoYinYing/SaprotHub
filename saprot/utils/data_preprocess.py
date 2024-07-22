@@ -50,7 +50,9 @@ class InputDataDispatcher:
             data_type="pdb", save_dir=self.STRUCTURE_HOME
         ).run(payload=protein_list.uniprot_ids)
 
-        plddt_masks=tuple(i.is_AF2_structure for i in protein_list.uniprot_ids)
+        plddt_masks = tuple(
+            i.is_AF2_structure for i in protein_list.uniprot_ids
+        )
         foldseeq_runner = FoldSeek(
             self.FOLDSEEK_PATH,
             nproc=self.nproc,

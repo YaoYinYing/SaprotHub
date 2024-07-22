@@ -45,15 +45,14 @@ def get_thermol_model():
 
     for i, s in track(enumerate(fitter(seqs))):
         inputs = tokenizer(s, return_tensors="pt")
-        #print(f'Tokenized: {inputs}')
+        # print(f'Tokenized: {inputs}')
         inputs = {k: v.to(model.device) for k, v in inputs.items()}
-        #print(f'Inputs: {inputs}')
+        # print(f'Inputs: {inputs}')
         with torch.no_grad():
             outputs = model(inputs)
-            print(f'Outputs: {outputs}')
+            print(f"Outputs: {outputs}")
 
         outputs_list.append(outputs)
-        break
 
     print(outputs_list)
 

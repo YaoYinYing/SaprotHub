@@ -31,7 +31,6 @@ from saprot.utils.mask_tool import shorter_range
 
 @dataclass
 class PlddtMasker:
-
     nproc: int = os.cpu_count()
     mask_cutoff: float = (
         0.0  # residue id that has plddt lower than this value will be masked.
@@ -57,16 +56,20 @@ class PlddtMasker:
                 plddt_values = []
 
                 plddt_values = [
-                    residue["CA"].get_bfactor() for residue in chain if "CA" in residue
+                    residue["CA"].get_bfactor()
+                    for residue in chain
+                    if "CA" in residue
                 ]
 
                 # a pre mask for non residues
                 mask = Mask(mask_pos_range=None)
                 if self.mask_cutoff >= 0 and self.mask_cutoff <= 100:
                     plddt_values_masked_slice = [
-                        i for i, v in enumerate(plddt_values) if v < self.mask_cutoff
+                        i
+                        for i, v in enumerate(plddt_values)
+                        if v < self.mask_cutoff
                     ]
-                    #print(plddt_values_masked_slice)
+                    # print(plddt_values_masked_slice)
                     # update mask if it is a valid slice
                     if plddt_values_masked_slice != []:
                         mask = Mask(
@@ -86,7 +89,8 @@ class PlddtMasker:
         )
 
 
-class PlddtMaskWarning(Warning): ...
+class PlddtMaskWarning(Warning):
+    ...
 
 
 @contextlib.contextmanager
@@ -214,7 +218,9 @@ class FoldSeekSetup:
             p = platformdirs.user_cache_dir("FoldSeek")
             tar.extractall(path=p)
 
-            os.rename(os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path)
+            os.rename(
+                os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path
+            )
 
         os.remove(compressed_file_path)
         if not os.path.exists(self.bin_path):
@@ -238,16 +244,19 @@ class FoldSeek:
             raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
 
     def query(
-        self, pdb_file: str, chain_ids: tuple[str] = None, enable_plddt_mask: bool = False
+        self,
+        pdb_file: str,
+        chain_ids: tuple[str] = None,
+        enable_plddt_mask: bool = False,
     ) -> StructuralAwareSequences:
         if pdb_file is None or not os.path.exists(pdb_file):
             raise FileNotFoundError(f"PDB file not found: {pdb_file}")
 
         self.name = os.path.basename(pdb_file)
         if enable_plddt_mask:
-            plddt_masks = PlddtMasker(mask_cutoff=self.plddt_threshold).parse_pdb(
-                pdb_file
-            )
+            plddt_masks = PlddtMasker(
+                mask_cutoff=self.plddt_threshold
+            ).parse_pdb(pdb_file)
 
         with tmpdir_manager() as tmpdir:
             tmp_save_path = os.path.join(tmpdir, "get_struc_seq.tsv")
@@ -271,8 +280,12 @@ class FoldSeek:
             stdout, stderr = process.communicate()
             retcode = process.wait()
 
-            if retcode and not (result_exists := os.path.exists(tmp_save_path)):
-                print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
+            if retcode and not (
+                result_exists := os.path.exists(tmp_save_path)
+            ):
+                print(
+                    f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:"
+                )
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())
@@ -338,7 +351,9 @@ class FoldSeek:
                 )
             )
             warnings.filterwarnings("ignore", category=PlddtMaskWarning)
-            enable_plddt_masks = [enable_plddt_masks for i, v in enumerate(pdb_files)]
+            enable_plddt_masks = [
+                enable_plddt_masks for i, v in enumerate(pdb_files)
+            ]
 
         if (l1 := len(enable_plddt_masks)) != (l2 := len(pdb_files)):
             raise ValueError(
@@ -348,7 +363,8 @@ class FoldSeek:
             Parallel(n_jobs=self.nproc)(
                 delayed(self.query)(pdb_file, None, plddt_mask)
                 for pdb_file, plddt_mask in track(
-                    zip(pdb_files, enable_plddt_masks), description="FoldSeeking..."
+                    zip(pdb_files, enable_plddt_masks),
+                    description="FoldSeeking...",
                 )
             )
         )

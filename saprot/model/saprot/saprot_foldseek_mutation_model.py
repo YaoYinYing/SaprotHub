@@ -9,7 +9,7 @@ import random
 import numpy as np
 
 from utils.others import merge_file
-from utils.foldseek_util import FoldSeek,tmpdir_manager
+from utils.foldseek_util import FoldSeek, tmpdir_manager
 from utils.constants import aa_set, foldseek_struc_vocab, aa_list
 from ..model_interface import register_model
 from .base import SaprotBaseModel
@@ -87,17 +87,21 @@ class SaprotFoldseekMutationModel(SaprotBaseModel):
         structure_type = "cif" if structure_type == "mmcif" else structure_type
 
         with tmpdir_manager() as tmpdir:
-            tmp_pdb_path= os.path.join(tmpdir, f"EsmFoldseekMutationModel_{self.global_rank}.{structure_type}")
+            tmp_pdb_path = os.path.join(
+                tmpdir,
+                f"EsmFoldseekMutationModel_{self.global_rank}.{structure_type}",
+            )
 
             # Save structure content to temporary file
             with open(tmp_pdb_path, "w") as w:
                 w.write(structure_content)
 
-
-            SA=FoldSeek(self.foldseek_path).query(pdb_file=tmp_pdb_path,enable_plddt_mask=True)
+            SA = FoldSeek(self.foldseek_path).query(
+                pdb_file=tmp_pdb_path, enable_plddt_mask=True
+            )
             # Get foldseek structural sequecne
-            
-            struc_seq = SA['A'].structural_seq
+
+            struc_seq = SA["A"].structural_seq
 
             if self.mask_rate is not None:
                 # Mask random structure tokens
