@@ -40,8 +40,6 @@ class ModelDispatcher:
         else:
             kwargs = {}
 
-        print(f"{kwargs=}")
-
         self.model_config.update(kwargs)
 
     def dispatch(self):

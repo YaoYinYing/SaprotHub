@@ -5,7 +5,8 @@ on:
   push:
     branches:
       - main
-
+env: 
+  conda_env: SaProt
 
 jobs:
   Tests:
@@ -14,6 +15,8 @@ jobs:
       matrix:
         os: 
           - ubuntu-latest
+          - windows-latest
+          - macos-13
         python-version: 
           - "3.9"
           - "3.10"
@@ -29,19 +32,39 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5.1.1
+      - name: Setup Conda on ${{ matrix.os }}
+        uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os != 'macos-14'
         with:
-          python-version: ${{ matrix.python-version }}
+            miniforge-variant: Mambaforge
+            miniforge-version: latest
+            auto-update-conda: false
+            activate-environment: ${{ env.conda_env }}
+            auto-activate-base: false
+            python-version: ${{ matrix.python-version }}
+      
+      - name: Setup Conda on macos-14
+        uses: conda-incubator/setup-miniconda@v3
+        if: matrix.os == 'macos-14'
+        with:
+            installer-url: https://github.com/conda-forge/miniforge/releases/download/24.3.0-0/Mambaforge-24.3.0-0-MacOSX-arm64.sh
+            auto-update-conda: false
+            activate-environment: ${{ env.conda_env }}
+            auto-activate-base: false
+            python-version: ${{ matrix.python-version }}
+      
 
       
       - name: Install SaProt on ${{ matrix.os }} - py${{ matrix.python-version }}
         run: |
+          which python
+          which python3
+
           pip3 install -U 'pip<24.0'
           pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
           pip3 install . 
 
-      - name: Test on Ubuntu
+      - name: Test on ${{ matrix.os }} - py${{ matrix.python-version }}
 
         run: |
           bash tests/run_tests.sh

@@ -59,7 +59,7 @@ class PretrainedModelLoader:
     loader_type: MODEL_LOADER_TYPE_HINT = None
     huggingface_id: str = "westlake-repl"
 
-    device: str = "auto"
+    device: Literal['auto', 'cpu', 'cuda', 'mps'] = "auto"
 
     def check_device(self):
         if self.device == "auto":
