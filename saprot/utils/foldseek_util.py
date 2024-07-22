@@ -18,11 +18,76 @@ from joblib import Parallel, delayed
 from rich.progress import track
 
 from saprot.utils.dataclasses import (
+    Mask,
     StructuralAwareSequence,
     StructuralAwareSequences,
 )
 
+from Bio.PDB import PDBParser
+import numpy as np
+
+from saprot.utils.mask_tool import shorter_range
+
+
+@dataclass
+class PlddtMasker:
+
+    nproc: int = os.cpu_count()
+    mask_cutoff: float = (
+        0.0  # residue id that has plddt lower than this value will be masked.
+    )
+
+    def __post_init__(self):
+        if self.mask_cutoff > 100:
+            warnings.warn("Mask cutoff should be between 0 and 100")
+            self.mask_cutoff = 100
+
+        if self.mask_cutoff < 0:
+            warnings.warn("Mask cutoff should be between 0 and 100")
+            self.mask_cutoff = 0
+
+    def parse_pdb(self, pdb_file: str) -> dict[str, Mask]:
+        parser = PDBParser(QUIET=True)
+        structure = parser.get_structure("model", pdb_file)
+        chain_plddt = {}
+
+        for model in structure:
+            for chain in model:
+                chain_id = chain.id
+                plddt_values = []
+
+                plddt_values = [
+                    residue["CA"].get_bfactor() for residue in chain if "CA" in residue
+                ]
+
+                # a pre mask for non residues
+                mask = Mask(mask_pos_range=None)
+                if self.mask_cutoff >= 0 and self.mask_cutoff <= 100:
+                    plddt_values_masked_slice = [
+                        i for i, v in enumerate(plddt_values) if v < self.mask_cutoff
+                    ]
+                    #print(plddt_values_masked_slice)
+                    # update mask if it is a valid slice
+                    if plddt_values_masked_slice != []:
+                        mask = Mask(
+                            mask_pos_range=shorter_range(
+                                list(plddt_values_masked_slice)
+                            ),
+                            zero_indexed=True,
+                        )
+
+                chain_plddt[chain_id] = mask
+
+        return chain_plddt
+
+    def run(self, payload: tuple) -> tuple[dict[str, Mask]]:
+        return Parallel(n_jobs=self.nproc)(
+            delayed(self.parse_pdb)(pdb_file) for pdb_file in track(payload)
+        )
+
+
 class PlddtMaskWarning(Warning): ...
+
 
 @contextlib.contextmanager
 def tmpdir_manager(base_dir: Optional[str] = None):
@@ -149,9 +214,7 @@ class FoldSeekSetup:
             p = platformdirs.user_cache_dir("FoldSeek")
             tar.extractall(path=p)
 
-            os.rename(
-                os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path
-            )
+            os.rename(os.path.join(p, "foldseek", "bin", "foldseek"), self.bin_path)
 
         os.remove(compressed_file_path)
         if not os.path.exists(self.bin_path):
@@ -168,21 +231,23 @@ class FoldSeek:
     plddt_threshold: float = 70.0
     name: str = None
 
+    drop_fold_results_after_initialized: bool = True
+
     def __post_init__(self):
         if not os.path.exists(self.foldseek):
             raise FileNotFoundError(f"Foldseek not found: {self.foldseek}")
 
     def query(
-        self, pdb_file: str, chain_ids: tuple[str] = None, plddt_mask: bool = False
+        self, pdb_file: str, chain_ids: tuple[str] = None, enable_plddt_mask: bool = False
     ) -> StructuralAwareSequences:
         if pdb_file is None or not os.path.exists(pdb_file):
             raise FileNotFoundError(f"PDB file not found: {pdb_file}")
 
         self.name = os.path.basename(pdb_file)
-        if plddt_mask:
-            plddts = extract_plddt(pdb_file)
-            # Mask regions with plddt < threshold
-            indices = np.where(plddts < self.plddt_threshold)[0]
+        if enable_plddt_mask:
+            plddt_masks = PlddtMasker(mask_cutoff=self.plddt_threshold).parse_pdb(
+                pdb_file
+            )
 
         with tmpdir_manager() as tmpdir:
             tmp_save_path = os.path.join(tmpdir, "get_struc_seq.tsv")
@@ -206,12 +271,8 @@ class FoldSeek:
             stdout, stderr = process.communicate()
             retcode = process.wait()
 
-            if retcode and not (
-                result_exists := os.path.exists(tmp_save_path)
-            ):
-                print(
-                    f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:"
-                )
+            if retcode and not (result_exists := os.path.exists(tmp_save_path)):
+                print(f"FoldSeek failed. \nFull Command:\n{cmd}\n  stderr begin:")
                 for error_line in stderr.decode("utf-8").splitlines():
                     if error_line.strip():
                         print(error_line.strip())
@@ -245,12 +306,14 @@ class FoldSeek:
             )
 
             # Mask low plddt
-            if plddt_mask:
-                np_seq = np.array(list(new_seq.structural_seq))
-                np_seq[indices] = "#"
-                new_seq.structural_seq = "".join(np_seq)
-
+            if enable_plddt_mask:
+                mask = plddt_masks[new_seq.chain]
+                # only structural sequence is masked here
+                new_seq.structural_seq = mask.masked(new_seq.structural_seq)
             seq_dict.seqs.update({new_seq.chain: new_seq})
+
+        if self.drop_fold_results_after_initialized:
+            seq_dict.foldseek_results = None
 
         return (
             seq_dict
@@ -259,22 +322,34 @@ class FoldSeek:
         )
 
     def parallel_queries(
-        self, pdb_files: Union[tuple, list], plddt_masks: Union[tuple[bool],bool] = False
+        self,
+        pdb_files: Union[tuple, list],
+        enable_plddt_masks: Union[tuple[bool], bool] = False,
     ) -> tuple[StructuralAwareSequences]:
-        if isinstance(plddt_masks, bool):
+        if not isinstance(enable_plddt_masks, (tuple, list)):
+            if not isinstance(enable_plddt_masks, bool):
+                raise TypeError(
+                    "enable_plddt_masks must be either a bool or a tuple of bools"
+                )
 
-            warnings.warn(PlddtMaskWarning(f'Apply PLDDT mask ({plddt_masks}) to all PDB queries'))
+            warnings.warn(
+                PlddtMaskWarning(
+                    f"Apply PLDDT mask ({enable_plddt_masks}) to all PDB queries"
+                )
+            )
             warnings.filterwarnings("ignore", category=PlddtMaskWarning)
-            plddt_masks = tuple([plddt_masks * len(pdb_files)])
-        
-        if len(plddt_masks) != len(pdb_files):
+            enable_plddt_masks = [enable_plddt_masks for i, v in enumerate(pdb_files)]
+
+        if (l1 := len(enable_plddt_masks)) != (l2 := len(pdb_files)):
             raise ValueError(
-                "The length of plddt_masks must be equal to the length of pdb_files"
+                f"The length of plddt_masks ({l1}) must be equal to the length of pdb_files ({l2})"
             )
         return tuple(
             Parallel(n_jobs=self.nproc)(
-                delayed(self.query)(pdb_file,None,plddt_mask)
-                for pdb_file,plddt_mask in track(zip(pdb_files,plddt_masks), description="FoldSeeking...")
+                delayed(self.query)(pdb_file, None, plddt_mask)
+                for pdb_file, plddt_mask in track(
+                    zip(pdb_files, enable_plddt_masks), description="FoldSeeking..."
+                )
             )
         )
 

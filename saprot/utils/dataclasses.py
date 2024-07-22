@@ -56,8 +56,8 @@ class Mask:
         Raises:
             ValueError: If mask_pos_range is empty.
         """
-        if self.mask_pos_range == "":
-            raise ValueError("Mask pos range cannot be empty!")
+        if self.mask_pos_range == "" or self.mask_pos_range is None:
+            return []
         from saprot.utils.mask_tool import expand_range
 
         expanded_mask_pos = expand_range(
@@ -81,7 +81,12 @@ class Mask:
         Raises:
             ValueError: If the length of the sequence is less than the maximum position of the mask, or if the mask position range is empty.
         """
+        # return sequence if there is no mask
+        if self.mask == []:
+            return sequence
+        
         sequence = list(sequence)
+        
         if len(sequence) < max(self.mask) + 1:
             raise ValueError(
                 f"Sequence length {len(sequence)} is less than the mask position range {self.mask_pos_range}"

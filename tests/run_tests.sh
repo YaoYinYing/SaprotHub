@@ -8,6 +8,7 @@ python tests/basic/basic_load.py
 python tests/basic/structure_awared.py
 python tests/basic/call_tmalign.py
 python tests/basic/dataset_dispatch.py
+python tests/basic/plddt_parser.py
 
 
 # direct predictions

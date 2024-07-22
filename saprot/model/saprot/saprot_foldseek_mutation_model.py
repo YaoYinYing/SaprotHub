@@ -94,7 +94,7 @@ class SaprotFoldseekMutationModel(SaprotBaseModel):
                 w.write(structure_content)
 
 
-            SA=FoldSeek(self.foldseek_path).query(pdb_file=tmp_pdb_path,plddt_mask=True)
+            SA=FoldSeek(self.foldseek_path).query(pdb_file=tmp_pdb_path,enable_plddt_mask=True)
             # Get foldseek structural sequecne
             
             struc_seq = SA['A'].structural_seq
